@@ -12,6 +12,15 @@ if [ -d iOS ]; then
 	rm -fr iOS
 fi
 
+if [ -d ElectronCash/electroncash ]; then
+	echo "Deleting old ElectronCash/electroncash..."
+	rm -fr ElectronCash/electroncash
+fi
+
+echo "Pulling 'electroncash' libs into project from ../lib ..."
+cp -fpR ../lib ElectronCash/electroncash
+find ElectronCash/electroncash -type d -name __pycache__ -exec rm -fv {}/\*.pyc \;
+
 echo ""
 echo "Building Briefcase-Based iOS Project..."
 echo ""

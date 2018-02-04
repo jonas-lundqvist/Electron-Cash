@@ -24,6 +24,7 @@ setup(
     author='Calin Culianu',
     author_email='calin.culianu@gmail.com',
     license='MIT license',
+    package_data={'': ["*.json"]},
     packages=find_packages(
         exclude=[
             'docs', 'tests',
