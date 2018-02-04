@@ -19,7 +19,7 @@ fi
 
 echo "Pulling 'electroncash' libs into project from ../lib ..."
 cp -fpR ../lib ElectronCash/electroncash
-find ElectronCash/electroncash -type d -name __pycache__ -exec rm -fv {}/\*.pyc \;
+find ElectronCash -name \*.pyc -exec rm -f {} \; 
 
 echo ""
 echo "Building Briefcase-Based iOS Project..."
