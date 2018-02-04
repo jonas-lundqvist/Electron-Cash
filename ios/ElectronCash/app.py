@@ -33,7 +33,16 @@ def check_imports():
     #NOT REACHED..
     #return "ALL OK!"
 
+def get_user_dir():
+    import rubicon.objc
+    NSFileManager = rubicon.objc.ObjCClass('NSFileManager')
+    dfm = NSFileManager.defaultManager
+    # documents dir
+    dir = dfm.URLsForDirectory_inDomains_(9, 1).objectAtIndex_(0)
+    return str(dir.path)
+
 class Converter(toga.App):
+
     def calculate(self, widget):
         try:
             self.c_input.value = (float(self.f_input.value) - 32.0) * 5.0 / 9.0
@@ -90,4 +99,13 @@ class Converter(toga.App):
 
 
 def main():
+    print("HomeDir from ObjC --> '%s'"%get_user_dir())
+
+    from electroncash.simple_config import SimpleConfig
+    from electroncash import daemon
+    sc = SimpleConfig(read_user_dir_function=get_user_dir)
+    fd, server = daemon.get_fd_or_server(sc)
+    print (" server=%s"%str(server))
+
+
     return Converter('Electron-Cash', 'com.c3-soft.ElectronCash')
