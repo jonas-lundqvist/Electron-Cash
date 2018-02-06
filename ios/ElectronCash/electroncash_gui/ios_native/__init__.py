@@ -117,7 +117,7 @@ class ElectrumGui(toga.App):
             self.c_input.value = '???'
 
     @staticmethod
-    def prompt_password(prmpt, dummy):
+    def prompt_password(prmpt, dummy=0):
         print("prompt_password(%s,%s)"%(prmpt,str(dummy)))
         return "bchbch"
 
@@ -173,6 +173,7 @@ class ElectrumGui(toga.App):
         with open(path, "wb") as fdesc:
             fdesc.write(hardcoded_testing_wallet)
             fdesc.close()
+            print("Generated hard-coded wallet -- wrote %d bytes"%len(hardcoded_testing_wallet))
         storage = WalletStorage(path, manual_upgrades=True)
         if not storage.file_exists():
             return
@@ -192,7 +193,7 @@ class ElectrumGui(toga.App):
 
     def do_wallet_stuff(self, path, uri):
         try:
-            wallet = self.daemon.load_wallet(path, None)
+            wallet = self.daemon.load_wallet(path, ElectrumGui.prompt_password("PassPrompt1"))
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
             return
