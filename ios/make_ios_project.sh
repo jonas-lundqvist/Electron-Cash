@@ -44,6 +44,28 @@ echo "Building Briefcase-Based iOS Project..."
 echo ""
 
 python3.5 setup.py ios
-cd iOS && ln -s . Support # Fixup for broken Briefcase template.. :/
+cd iOS && ln -s . Support && cd .. # Fixup for broken Briefcase template.. :/
 
+infoplist="iOS/ElectronCash/ElectronCash-Info.plist"
+if [ -f "${infoplist}" ]; then
+	echo ""
+	echo "Adding custom keys to ${infoplist} ..."
+	echo ""
+	plutil -insert "NSAppTransportSecurity" -xml '<dict><key>NSAllowsArbitraryLoads</key><true/></dict>' -- ${infoplist} 
+	if [ "$?" != "0" ]; then
+		echo "Encountered error adding custom keys to plist!"
+		exit 1
+	fi
+fi
 
+echo ''
+echo '**************************************************************************'
+echo '*                                                                        *'
+echo '*   Operation Complete. An Xcode project has been generated in "iOS/"    *'
+echo '*                                                                        *'
+echo '**************************************************************************'
+echo '  NOTE: Modifications to files in iOS/ will be clobbered the next    '
+echo '        time this script is run.  If you intend on modifying the     '
+echo '        program in Xcode, be sure to copy back modifications to the  '
+echo '        ElectronCash/ subdirectory outside of iOS/                 '
+echo ''
