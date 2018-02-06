@@ -9,7 +9,7 @@ def get_user_dir():
     return str(dir.path)
 
 def prompt_password(prmpt, dummy):
-    from electroncash_gui.ios import ElectrumGui
+    from electroncash_gui.ios_native import ElectrumGui
     return ElectrumGui.prompt_password(prmpt, dummy)
 
 
@@ -139,7 +139,7 @@ def main():
     config_options = {
             'verbose': True,
             'cmd': 'gui',
-            'gui': 'ios',
+            'gui': 'ios_native',
     }
 
     config_options['cwd'] = os.getcwd()
