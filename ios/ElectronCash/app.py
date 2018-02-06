@@ -9,8 +9,8 @@ def get_user_dir():
     return str(dir.path)
 
 def prompt_password(prmpt, dummy):
-    print("prompt_password(%s,%s)"%(prmpt,str(dummy)))
-    return "dummy"
+    from electroncash_gui.ios import ElectrumGui
+    return ElectrumGui.prompt_password(prmpt, dummy)
 
 
 def main():
