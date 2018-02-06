@@ -98,6 +98,10 @@ class ElectrumGui(toga.App):
         self.config = config
         self.daemon = daemon
         self.plugins = plugins
+        self.wallet = None
+        self.mleText = ''
+        self.headings = ()
+        self.history = ()
         #run_hook('init_qt', self)
 
     def init_network(self):
@@ -150,10 +154,21 @@ class ElectrumGui(toga.App):
         box.add(c_box)
         box.add(button)
 
-        slbl = toga.Label(check_imports(), alignment=toga.LEFT_ALIGNED)
-        slbl.set_font(toga.Font(family="Helvetica",size=10.0))
+        box2 = toga.Box()
 
-        box.add(slbl)
+        slbl = toga.Label(self.mleText, alignment=toga.LEFT_ALIGNED)
+        #mle = toga.TextInput(readonly=True,initial=self.mleText)
+        slbl.set_font(toga.Font(family="Helvetica",size=10.0))
+        #slbl.style.set(flex_direction='row')
+
+        box2.add(slbl)
+
+        box3 = toga.Box()
+        table = toga.DetailedList(data=self.history)
+        box3.add(table)
+
+        box.add(box2)
+        box.add(box3)
 
         box.style.set(flex_direction='column', padding_top=10)
         f_box.style.set(flex_direction='row', margin=5)
@@ -225,9 +240,22 @@ class ElectrumGui(toga.App):
         self.config.set_key('auto_connect', self.daemon.network.auto_connect, True)
         print("WALLET PATH: %s"%path)
         print ("NETWORK: %s"%str(self.daemon.network))
-        if not self.do_wallet_stuff(path, self.config.get('url')):
+        w = self.do_wallet_stuff(path, self.config.get('url'))
+
+        # TODO: put this stuff in the UI
+        if not w:
             sys.exit(1)
             return
+        self.wallet = w
+        hist = w.get_history()
+        i=0
+        self.mleText = check_imports()
+        self.headings = ("TxHash","Height","Conf","TimeStamp","Delta","Balance");
+        self.history = hist
+        for a in hist:
+            ss = "history[%d] tx_hash=%s height=%d, conf=%d, timestamp=%s, delta=%s, balance=%s"%(i,*a)
+            print(ss)
+            i=i+1
         signal.signal(signal.SIGINT, lambda *args: self.exit())
         # main loop
         # note that on iOS this is a no-op and returns right away
