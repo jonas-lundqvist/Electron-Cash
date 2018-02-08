@@ -71,6 +71,6 @@ echo '*                                                                        *
 echo '**************************************************************************'
 echo '  NOTE: Modifications to files in iOS/ will be clobbered the next    '
 echo '        time this script is run.  If you intend on modifying the     '
-echo '        program in Xcode, be sure to copy back modifications from iOS/ '
-echo '        to the ElectronCash/ directory, or run ./copy_back_changes.sh.'
+echo '        program in Xcode, be sure to copy out modifications from iOS/ '
+echo '        manually or by running ./copy_back_changes.sh.'
 echo ''
