@@ -32,9 +32,9 @@ import base64
 
 
 try:
-    import toga
-except Exception:
-    sys.exit("Error: Could not import toga")
+    from .uikit_bindings import *
+except Exception as e:
+    sys.exit("Error: Could not import iOS libs: %s"%str(e))
 
 
 from electroncash.i18n import _, set_language
@@ -86,10 +86,14 @@ def check_imports():
     #return "ALL OK!"
 
 
-class ElectrumGui(toga.App):
+class ElectrumGui:
+
+    gui = None
 
     def __init__(self, config, daemon, plugins):
-        super().__init__('Electron-Cash', 'com.c3-soft.ElectronCash')
+        ElectrumGui.gui = self
+        self.appName = 'Electron-Cash'
+        self.appDomain = 'com.c3-soft.ElectronCash'
         set_language(config.get('language'))
         # Uncomment this call to verify objects are being properly
         # GC-ed when windows are closed
@@ -102,7 +106,26 @@ class ElectrumGui(toga.App):
         self.mleText = ''
         self.headings = ()
         self.history = ()
-        #run_hook('init_qt', self)
+        self.screen = None
+        self.window = None
+        self.controller = None
+
+    def createUIAndShow(self):
+        if not self.screen:
+            self.screen = UIScreen.mainScreen
+        if not self.window:
+            self.window = UIWindow.alloc().initWithFrame_(self.screen.bounds)
+        if not self.controller:
+            self.controller = UIViewController.alloc().init()
+
+        self.window.backgroundColor = UIColor.whiteColor
+        self.window.rootViewController = self.controller
+
+        lbl = UILabel.alloc().initWithFrame_(self.screen.bounds)
+        lbl.text = str(check_imports())
+        self.controller.view = lbl
+        self.window.makeKeyAndVisible()
+        return True
 
     def init_network(self):
         # Show network dialog if config does not exist
@@ -125,64 +148,6 @@ class ElectrumGui(toga.App):
         print("prompt_password(%s,%s)"%(prmpt,str(dummy)))
         return "bchbch"
 
-    def startup(self):
-        self.main_window = toga.MainWindow(self.name)
-        self.main_window.app = self
-
-        # Tutorial 1
-        c_box = toga.Box()
-        f_box = toga.Box()
-        box = toga.Box()
-
-        self.c_input = toga.TextInput(readonly=True)
-        self.f_input = toga.TextInput()
-
-        c_label = toga.Label('Celsius', alignment=toga.LEFT_ALIGNED)
-        f_label = toga.Label('Fahrenheit', alignment=toga.LEFT_ALIGNED)
-        join_label = toga.Label('is equivalent to', alignment=toga.RIGHT_ALIGNED)
-
-        button = toga.Button('Calculate', on_press=self.calculate)
-
-        f_box.add(self.f_input)
-        f_box.add(f_label)
-
-        c_box.add(join_label)
-        c_box.add(self.c_input)
-        c_box.add(c_label)
-
-        box.add(f_box)
-        box.add(c_box)
-        box.add(button)
-
-        box2 = toga.Box()
-
-        slbl = toga.Label(self.mleText, alignment=toga.LEFT_ALIGNED)
-        #mle = toga.TextInput(readonly=True,initial=self.mleText)
-        slbl.set_font(toga.Font(family="Helvetica",size=10.0))
-        #slbl.style.set(flex_direction='row')
-
-        box2.add(slbl)
-
-        box3 = toga.Box()
-        table = toga.DetailedList(data=self.history)
-        box3.add(table)
-
-        box.add(box2)
-        box.add(box3)
-
-        box.style.set(flex_direction='column', padding_top=10)
-        f_box.style.set(flex_direction='row', margin=5)
-        c_box.style.set(flex_direction='row', margin=5)
-
-        self.c_input.style.set(flex=1)
-        self.f_input.style.set(flex=1, margin_left=160)
-        c_label.style.set(width=100, margin_left=10)
-        f_label.style.set(width=100, margin_left=10)
-        join_label.style.set(width=150, margin_right=10)
-        button.style.set(margin=15)
-        
-        self.main_window.content = box
-        self.main_window.show()
 
     def generate_wallet(self, path):
         with open(path, "wb") as fdesc:
@@ -225,6 +190,9 @@ class ElectrumGui(toga.App):
         print("WALLET=%s"%str(wallet))
         return wallet
 
+    # this method is called by Electron Cash libs to start the GUI, but we defer actual GUI
+    # creation until applicationDidFinishLaunching, as that's when we are guaranteed to have all
+    # objc classes...
     def main(self):
         try:
             self.init_network()
@@ -257,6 +225,24 @@ class ElectrumGui(toga.App):
             print(ss)
             i=i+1
         signal.signal(signal.SIGINT, lambda *args: self.exit())
-        # main loop
-        # note that on iOS this is a no-op and returns right away
-        self.main_loop()
+
+class PythonAppDelegate(UIResponder):
+    @objc_method
+    def applicationDidBecomeActive(self) -> None:
+        print("App became active.")
+
+    @objc_method
+    def application_didFinishLaunchingWithOptions_(self, application, launchOptions) -> bool:
+        print("App finished launching.")
+        if ElectrumGui.gui:
+            return ElectrumGui.gui.createUIAndShow()
+        return False
+
+    @objc_method
+    def application_didChangeStatusBarOrientation_(self, application, oldStatusBarOrientation: int) -> None:
+        print("ROTATED", oldStatusBarOrientation)
+            #App.app.main_window.content._update_layout(
+            #                                       width=App.app.main_window._screen.bounds.size.width,
+            #                                       height=App.app.main_window._screen.bounds.size.height,
+            #                                       )
+

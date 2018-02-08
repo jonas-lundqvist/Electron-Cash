@@ -43,7 +43,12 @@ echo ""
 echo "Building Briefcase-Based iOS Project..."
 echo ""
 
-python3.5 setup.py ios
+python3.5 setup.py ios 
+if [ "$?" != 0 ]; then
+	echo "An error occurred running setup.py"
+	exit 4
+fi
+
 cd iOS && ln -s . Support && cd .. # Fixup for broken Briefcase template.. :/
 
 infoplist="iOS/ElectronCash/ElectronCash-Info.plist"
@@ -66,6 +71,6 @@ echo '*                                                                        *
 echo '**************************************************************************'
 echo '  NOTE: Modifications to files in iOS/ will be clobbered the next    '
 echo '        time this script is run.  If you intend on modifying the     '
-echo '        program in Xcode, be sure to copy back modifications to the  '
-echo '        ElectronCash/ subdirectory outside of iOS/                 '
+echo '        program in Xcode, be sure to copy back modifications from iOS/ '
+echo '        to the ElectronCash/ directory, or run ./copy_back_changes.sh.'
 echo ''
