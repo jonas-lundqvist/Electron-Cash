@@ -41,5 +41,9 @@ for file in $a $b; do
 done
 
 echo ""
-echo "Copied $ct changed file(s)."
+if ((ct>0)); then
+	echo "Copied back $ct changed file(s), done." 
+else
+	echo "No files were changed in iOS/"
+fi
 
