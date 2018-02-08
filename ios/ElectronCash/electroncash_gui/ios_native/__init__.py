@@ -80,8 +80,28 @@ def check_imports():
     except Exception as e:
         print("Error: %s"%str(e))
         return str(e)
-    #NOT REACHED..
-    #return "ALL OK!"
+
+class HistoryTableVC(UITableViewController):
+    @objc_method
+    def numberOfSectionsInTableView_(self, tableView) -> int:
+        return 1
+
+    @objc_method
+    def tableView_numberOfRowsInSection_(self, tableView, section) -> int:
+        return len(self.history)
+
+    @objc_method
+    def tableView_cellForRowAtIndexPath_(self, tableView, indexPath):
+        cell = tableView.dequeueReusableCellWithIdentifier_("row")
+        if cell is None:
+            cell = UITableViewCell.alloc().initWithStyle_reuseIdentifier_(UITableViewCellStyleDefault, "row")
+        cell.textLabel.text = self.history[indexPath.row][0]
+        return cell
+
+    @objc_method
+    def refresh(self):
+        self.refreshControl.endRefreshing()
+        self.tableView.reloadData()
 
 
 class ElectrumGui:
@@ -93,10 +113,7 @@ class ElectrumGui:
         self.appName = 'Electron-Cash'
         self.appDomain = 'com.c3-soft.ElectronCash'
         set_language(config.get('language'))
-        # Uncomment this call to verify objects are being properly
-        # GC-ed when windows are closed
-        #network.add_jobs([DebugMem([Abstract_Wallet, SPV, Synchronizer,
-        #                            ElectrumWindow], interval=5)])
+
         self.config = config
         self.daemon = daemon
         self.plugins = plugins
@@ -107,21 +124,26 @@ class ElectrumGui:
         self.screen = None
         self.window = None
         self.controller = None
+        self.tabController = None
 
-    def createUIAndShow(self):
-        if not self.screen:
-            self.screen = UIScreen.mainScreen
-        if not self.window:
-            self.window = UIWindow.alloc().initWithFrame_(self.screen.bounds)
-        if not self.controller:
-            self.controller = UIViewController.alloc().init()
+    def createAndShowUI(self):
+        self.screen = UIScreen.mainScreen
+        self.window = UIWindow.alloc().initWithFrame_(self.screen.bounds)
+        self.controller = UITabBarController.alloc().init()
+
 
         self.window.backgroundColor = UIColor.whiteColor
+
+        tbl = HistoryTableVC.alloc().initWithStyle_(UITableViewStylePlain)
+        tbl.title = "History"
+        tbl.history = self.history
+
+        a = NSMutableArray.alloc().initWithObject_(tbl)
+
+        self.controller.viewControllers = a
+
         self.window.rootViewController = self.controller
 
-        lbl = UILabel.alloc().initWithFrame_(self.screen.bounds)
-        lbl.text = str(check_imports())
-        self.controller.view = lbl
         self.window.makeKeyAndVisible()
         return True
 
@@ -134,12 +156,6 @@ class ElectrumGui:
                 #wizard.terminate()
                 print("NEED TO SHOW WIZARD HERE")
                 pass
-
-    def calculate(self, widget):
-        try:
-            self.c_input.value = (float(self.f_input.value) - 32.0) * 5.0 / 9.0
-        except Exception:
-            self.c_input.value = '???'
 
     @staticmethod
     def prompt_password(prmpt, dummy=0):
@@ -188,9 +204,7 @@ class ElectrumGui:
         print("WALLET=%s"%str(wallet))
         return wallet
 
-    # this method is called by Electron Cash libs to start the GUI, but we defer actual GUI
-    # creation until applicationDidFinishLaunching, as that's when we are guaranteed to have all
-    # objc classes...
+    # this method is called by Electron Cash libs to start the GUI
     def main(self):
         try:
             self.init_network()
@@ -207,11 +221,8 @@ class ElectrumGui:
         print("WALLET PATH: %s"%path)
         print ("NETWORK: %s"%str(self.daemon.network))
         w = self.do_wallet_stuff(path, self.config.get('url'))
-
+        assert w
         # TODO: put this stuff in the UI
-        if not w:
-            sys.exit(1)
-            return
         self.wallet = w
         hist = w.get_history()
         i=0
@@ -222,25 +233,5 @@ class ElectrumGui:
             ss = "history[%d] tx_hash=%s height=%d, conf=%d, timestamp=%s, delta=%s, balance=%s"%(i,*a)
             print(ss)
             i=i+1
-        signal.signal(signal.SIGINT, lambda *args: self.exit())
 
-class PythonAppDelegate(UIResponder):
-    @objc_method
-    def applicationDidBecomeActive(self) -> None:
-        print("App became active.")
-
-    @objc_method
-    def application_didFinishLaunchingWithOptions_(self, application, launchOptions) -> bool:
-        print("App finished launching.")
-        if ElectrumGui.gui:
-            return ElectrumGui.gui.createUIAndShow()
-        return False
-
-    @objc_method
-    def application_didChangeStatusBarOrientation_(self, application, oldStatusBarOrientation: int) -> None:
-        print("ROTATED", oldStatusBarOrientation)
-            #App.app.main_window.content._update_layout(
-            #                                       width=App.app.main_window._screen.bounds.size.width,
-            #                                       height=App.app.main_window._screen.bounds.size.height,
-            #                                       )
-
+        self.createAndShowUI()

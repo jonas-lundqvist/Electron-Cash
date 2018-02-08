@@ -242,12 +242,19 @@ UIBarButtonSystemItemPageCurl = 23
 # UIViewController.h
 UIViewController = ObjCClass('UIViewController')
 
+# UITabBarController.h
+UITabBarController = ObjCClass('UITabBarController')
+
 # UIRefreshControl.h
 UIRefreshControl = ObjCClass('UIRefreshControl')
 
 # UITableView.h
 UITableView = ObjCClass('UITableView')
 UITableViewController = ObjCClass('UITableViewController')
+
+UITableViewStylePlain = 0
+UITableViewStyleGrouped = 1
+
 
 NSIndexPath = ObjCClass('NSIndexPath')
 
