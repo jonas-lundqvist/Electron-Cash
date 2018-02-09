@@ -41,7 +41,8 @@ setup(
     install_requires=[
         'certifi', 'chardet', 'dnspython', 'ecdsa>=0.9', 'idna',
         'jsonrpclib-pelix', 'pbkdf2', 'protobuf',
-        'pyaes>=0.1a1', 'PySocks>=1.6.6', 'qrcode', 'requests', 'six',
+        'pyaes>=0.1a1', #'pyOpenSSL>=17.5.0', 
+        'PySocks>=1.6.6', 'qrcode', 'requests', 'six',
         'urllib3' #, 'pyqt5'
     ],
     options={

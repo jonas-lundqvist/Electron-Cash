@@ -108,7 +108,11 @@ class HistoryTableVC(UITableViewController):
         try:
             entry = self.entries[indexPath.row]
             t = ("%s | Amt: %s | Bal: %s"%(entry[2],entry[4],entry[5]))
-            t2 = ("%s | %s"%(entry[6],entry[3]))
+            ff = entry[6]
+            conf = entry[7]
+            if conf > 0:
+                ff = "%s confirmations"%conf
+            t2 = ("%s | %s"%(ff,entry[3]))
             cell.textLabel.text = t
             cell.textLabel.adjustsFontSizeToFitWidth = True
             cell.detailTextLabel.text = t2
@@ -137,7 +141,7 @@ class HistoryTableVC(UITableViewController):
             balance_str = self.parent.format_amount(balance, whitespaces=True)
             label = wallet.get_label(tx_hash)
             date = timestamp_to_datetime(time.time() if conf <= 0 else timestamp)
-            entry = ['', tx_hash, status_str, label, v_str, balance_str, date]
+            entry = ['', tx_hash, status_str, label, v_str, balance_str, date, conf]
             self.entries.insert(0,entry) # reverse order
             #if fx and fx.show_history():
             #    date = timestamp_to_datetime(time.time() if conf <= 0 else timestamp)
@@ -174,7 +178,19 @@ class HistoryTableVC(UITableViewController):
         except:
             pass
         self.tableView.reloadData()
+        self.needs_update = False
+        
+    @objc_method
+    def needUpdate(self):
+        self.needs_update = True
 
+    @objc_method
+    def tick_(self,t):
+        try:
+            if self.needs_update:
+                self.refresh()
+        except:
+            pass
 
 class ElectrumGui(PrintError):
 
@@ -197,7 +213,7 @@ class ElectrumGui(PrintError):
         self.historyVC = None
         self.num_zeros = 0
         self.decimal_point = 5
-
+        
     def createAndShowUI(self):
         self.screen = UIScreen.mainScreen
         irect = rect = self.screen.bounds
@@ -239,8 +255,10 @@ class ElectrumGui(PrintError):
 
         tbl.refresh()
         
+        self.tickTimer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(0.01, tbl, SEL(b'tick:'), "tickTimer", True)
+        
         return True
-
+    
     def init_network(self):
         # Show network dialog if config does not exist
         if self.daemon.network:
@@ -258,6 +276,7 @@ class ElectrumGui(PrintError):
             
     def on_network(self, event, *args):
         print ("ON NETWORK: %s"%event)
+        self.historyVC.needUpdate()
         if event == 'updated':
             pass
         elif event == 'new_transaction':

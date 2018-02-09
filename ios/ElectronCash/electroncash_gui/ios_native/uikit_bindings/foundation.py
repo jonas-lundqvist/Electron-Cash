@@ -33,3 +33,6 @@ NSURLRequest = ObjCClass('NSURLRequest')
 # UIFont.h
 
 UIFont = ObjCClass('UIFont')
+
+# NSTimer
+NSTimer = ObjCClass('NSTimer')
