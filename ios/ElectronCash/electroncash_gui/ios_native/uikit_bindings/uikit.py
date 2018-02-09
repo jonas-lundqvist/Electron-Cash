@@ -15,6 +15,8 @@ uikit = cdll.LoadLibrary(util.find_library('UIKit'))
 uikit.UIApplicationMain.restype = c_int
 uikit.UIApplicationMain.argtypes = [c_int, POINTER(c_char_p), c_void_p, c_void_p]
 
+UIApplication = ObjCClass('UIApplication')
+
 NSArray = ObjCClass('NSArray')
 NSMutableArray = ObjCClass('NSMutableArray')
 

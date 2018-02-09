@@ -29,6 +29,8 @@ import sys
 import traceback
 import bz2
 import base64
+import time
+from datetime import datetime
 
 
 try:
@@ -43,7 +45,7 @@ from electroncash import WalletStorage, Wallet
 # from electroncash.synchronizer import Synchronizer
 # from electroncash.verifier import SPV
 # from electroncash.util import DebugMem
-from electroncash.util import UserCancelled, print_error
+from electroncash.util import UserCancelled, print_error, format_satoshis, PrintError, timestamp_to_datetime
 
 # from electroncash.wallet import Abstract_Wallet
 
@@ -82,29 +84,97 @@ def check_imports():
         return str(e)
 
 class HistoryTableVC(UITableViewController):
+    # NB: set self.parent outside this class.  Couldn't figure out how to write an objc constructor that also sets properties
+    # for the Python object. :/
     @objc_method
     def numberOfSectionsInTableView_(self, tableView) -> int:
         return 1
 
     @objc_method
     def tableView_numberOfRowsInSection_(self, tableView, section) -> int:
-        return len(self.history)
+        try:
+            return len(self.entries)
+        except:
+            print("Error, no self.entries")
+            return 0
 
     @objc_method
     def tableView_cellForRowAtIndexPath_(self, tableView, indexPath):
         cell = tableView.dequeueReusableCellWithIdentifier_("row")
         if cell is None:
-            cell = UITableViewCell.alloc().initWithStyle_reuseIdentifier_(UITableViewCellStyleDefault, "row")
-        cell.textLabel.text = self.history[indexPath.row][0]
+            cell = UITableViewCell.alloc().initWithStyle_reuseIdentifier_(UITableViewCellStyleSubtitle, "row")
+        try:
+            entry = self.entries[indexPath.row]
+            t = ("%s | Amt: %s | Bal: %s"%(entry[2],entry[4],entry[5]))
+            t2 = ("%s | %s"%(entry[6],entry[3]))
+            cell.textLabel.text = t
+            cell.textLabel.adjustsFontSizeToFitWidth = True
+            cell.detailTextLabel.text = t2
+            #cell.detailTextLabel.lineBreakMode = NSLineBreakByWordWrapping
+            cell.detailTextLabel.adjustsFontSizeToFitWidth = True
+        except:
+            cell.textLabel.text = "*Error*"
         return cell
+    
+    @objc_method
+    def updateHistoryFromWallet(self):
+        wallet = self.parent.wallet
+        h = wallet.get_history()
+        #item = self.currentItem()
+        #current_tx = item.data(0, Qt.UserRole) if item else None
+        #self.clear()
+        #fx = self.parent.fx
+        #if fx: fx.history_used_spot = False
+        self.entries = []
+        for h_item in h:
+            tx_hash, height, conf, timestamp, value, balance = h_item
+            status, status_str = wallet.get_tx_status(tx_hash, height, conf, timestamp)
+            has_invoice = wallet.invoices.paid.get(tx_hash)
+            #icon = QIcon(":icons/" + TX_ICONS[status])
+            v_str = self.parent.format_amount(value, True, whitespaces=True)
+            balance_str = self.parent.format_amount(balance, whitespaces=True)
+            label = wallet.get_label(tx_hash)
+            date = timestamp_to_datetime(time.time() if conf <= 0 else timestamp)
+            entry = ['', tx_hash, status_str, label, v_str, balance_str, date]
+            self.entries.insert(0,entry) # reverse order
+            #if fx and fx.show_history():
+            #    date = timestamp_to_datetime(time.time() if conf <= 0 else timestamp)
+            #    for amount in [value, balance]:
+            #        text = fx.historical_value_str(amount, date)
+            #        entry.append(text)
+            #item = SortableTreeWidgetItem(entry)
+            #item.setIcon(0, icon)
+            #item.setToolTip(0, str(conf) + " confirmation" + ("s" if conf != 1 else ""))
+            #item.setData(0, SortableTreeWidgetItem.DataRole, (status, conf))
+            #if has_invoice:
+            #    item.setIcon(3, QIcon(":icons/seal"))
+            #for i in range(len(entry)):
+            #    if i>3:
+            #        item.setTextAlignment(i, Qt.AlignRight)
+            #    if i!=2:
+            #        item.setFont(i, QFont(MONOSPACE_FONT))
+            #if value and value < 0:
+            #    item.setForeground(3, QBrush(QColor("#BC1E1E")))
+            #    item.setForeground(4, QBrush(QColor("#BC1E1E")))
+            #if tx_hash:
+            #    item.setData(0, Qt.UserRole, tx_hash)
+            #self.insertTopLevelItem(0, item)
+            #if current_tx == tx_hash:
+            #    self.setCurrentItem(item)
+        print ("fetched %d entries from history"%len(self.entries))
+
 
     @objc_method
     def refresh(self):
-        self.refreshControl.endRefreshing()
+        self.updateHistoryFromWallet()
+        try:
+            self.refreshControl.endRefreshing()
+        except:
+            pass
         self.tableView.reloadData()
 
 
-class ElectrumGui:
+class ElectrumGui(PrintError):
 
     gui = None
 
@@ -118,25 +188,31 @@ class ElectrumGui:
         self.daemon = daemon
         self.plugins = plugins
         self.wallet = None
-        self.mleText = ''
-        self.headings = ()
-        self.history = ()
         self.screen = None
         self.window = None
         self.controller = None
         self.tabController = None
+        self.historyVC = None
+        self.num_zeros = 0
+        self.decimal_point = 5
 
     def createAndShowUI(self):
         self.screen = UIScreen.mainScreen
-        self.window = UIWindow.alloc().initWithFrame_(self.screen.bounds)
-        self.controller = UITabBarController.alloc().init()
+        irect = rect = self.screen.bounds
+        if not UIApplication.sharedApplication.isStatusBarHidden():
+            sb = UIApplication.sharedApplication.statusBarFrame
+            irect.origin.y += sb.size.height
+            irect.size.height -= sb.size.height
+        self.window = UIWindow.alloc().initWithFrame_(rect)
+        self.tabController = self.controller = UITabBarController.alloc().init()
 
 
         self.window.backgroundColor = UIColor.whiteColor
 
-        tbl = HistoryTableVC.alloc().initWithStyle_(UITableViewStylePlain)
-        tbl.title = "History"
-        tbl.history = self.history
+        self.historyVC = tbl = HistoryTableVC.alloc().initWithStyle_(UITableViewStylePlain)
+        tbl.parent = self
+        tbl.title = "History" # objc property
+        tbl.view.frame = irect
 
         a = NSMutableArray.alloc().initWithObject_(tbl)
 
@@ -145,6 +221,23 @@ class ElectrumGui:
         self.window.rootViewController = self.controller
 
         self.window.makeKeyAndVisible()
+                        
+        # network callbacks
+        if self.daemon.network:
+            self.daemon.network.register_callback(self.on_history, ['on_history'])
+            #self.daemon.network_signal.connect(self.on_network1)
+            interests = ['updated', 'new_transaction', 'status',
+                         'banner', 'verified', 'fee']
+            # To avoid leaking references to "self" that prevent the
+            # window from being GC-ed when closed, callbacks should be
+            # methods of this class only, and specifically not be
+            # partials, lambdas or methods of subobjects.  Hence...
+            self.daemon.network.register_callback(self.on_network, interests)
+            print ("REGISTERED NETWORK CALLBACK")
+
+
+        tbl.refresh()
+        
         return True
 
     def init_network(self):
@@ -156,6 +249,36 @@ class ElectrumGui:
                 #wizard.terminate()
                 print("NEED TO SHOW WIZARD HERE")
                 pass
+            
+    def on_history(self, b):
+        print("------------ ON HISTORY ----------")
+        if self.historyVC:
+            self.historyVC.refresh()
+            
+    def on_network(self, event, *args):
+        print ("ON NETWORK: %s"%event)
+        if event == 'updated':
+            pass
+        elif event == 'new_transaction':
+            pass
+        elif event in ['status', 'banner', 'verified', 'fee']:
+            pass
+        else:
+            self.print_error("unexpected network message:", event, args)
+
+    def on_network1(self, event, args=None):
+        print ("ON NETWORK1: %s"%event)
+        # Handle a network message in the GUI thread
+        if event == 'status':
+            pass #self.update_status()
+        elif event == 'banner':
+            pass
+        elif event == 'verified':
+            pass
+        elif event == 'fee':
+            pass
+        else:
+            self.print_error("unexpected network_qt signal:", event, args)
 
     @staticmethod
     def prompt_password(prmpt, dummy=0):
@@ -203,9 +326,16 @@ class ElectrumGui:
             self.daemon.add_wallet(wallet)
         print("WALLET=%s"%str(wallet))
         return wallet
+    
+    def format_amount(self, x, is_diff=False, whitespaces=False):
+        return format_satoshis(x, is_diff, self.num_zeros, self.decimal_point, whitespaces)
+
 
     # this method is called by Electron Cash libs to start the GUI
     def main(self):
+        
+        print("Test Decode result: %s"%check_imports())
+
         try:
             self.init_network()
         except:
@@ -224,14 +354,4 @@ class ElectrumGui:
         assert w
         # TODO: put this stuff in the UI
         self.wallet = w
-        hist = w.get_history()
-        i=0
-        self.mleText = check_imports()
-        self.headings = ("TxHash","Height","Conf","TimeStamp","Delta","Balance");
-        self.history = hist
-        for a in hist:
-            ss = "history[%d] tx_hash=%s height=%d, conf=%d, timestamp=%s, delta=%s, balance=%s"%(i,*a)
-            print(ss)
-            i=i+1
-
         self.createAndShowUI()
