@@ -84,8 +84,10 @@ def check_imports():
         return str(e)
 
 class HistoryTableVC(UITableViewController):
-    # NB: set self.parent outside this class.  Couldn't figure out how to write an objc constructor that also sets properties
-    # for the Python object. :/
+    # NB: Caller needs to set self.parent to point to the ElectrumGui instance.
+    #     I couldn't figure out how to write an objc constructor that also sets properties
+    #     for the Python object and calls the obj C super... :/
+    #
     @objc_method
     def numberOfSectionsInTableView_(self, tableView) -> int:
         return 1
@@ -233,8 +235,7 @@ class ElectrumGui(PrintError):
             # methods of this class only, and specifically not be
             # partials, lambdas or methods of subobjects.  Hence...
             self.daemon.network.register_callback(self.on_network, interests)
-            print ("REGISTERED NETWORK CALLBACK")
-
+            print ("REGISTERED NETWORK CALLBACKS")
 
         tbl.refresh()
         
@@ -321,10 +322,11 @@ class ElectrumGui(PrintError):
             except Exception as e:
                 print_error('[do_wallet_stuff] Exception caught', e)
             if not wallet:
+                print("NO WALLET!!!")
                 return
             wallet.start_threads(self.daemon.network)
             self.daemon.add_wallet(wallet)
-        print("WALLET=%s"%str(wallet))
+        print("WALLET=%s synchronizer=%s"%(str(wallet),str(wallet.synchronizer)))
         return wallet
     
     def format_amount(self, x, is_diff=False, whitespaces=False):
