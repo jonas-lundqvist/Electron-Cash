@@ -36,3 +36,8 @@ UIFont = ObjCClass('UIFont')
 
 # NSTimer
 NSTimer = ObjCClass('NSTimer')
+
+NSThread = ObjCClass('NSThread')
+NSInvocation = ObjCClass('NSInvocation')
+NSMethodSignature = ObjCClass('NSMethodSignature')
+NSEnumerator = ObjCClass('NSEnumerator')

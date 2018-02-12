@@ -31,7 +31,7 @@ import bz2
 import base64
 import time
 from datetime import datetime
-
+from . import heartbeat
 
 try:
     from .uikit_bindings import *
@@ -178,16 +178,16 @@ class HistoryTableVC(UITableViewController):
         except:
             pass
         self.tableView.reloadData()
-        self.needs_update = False
+        self.needs_refresh = False
         
     @objc_method
     def needUpdate(self):
-        self.needs_update = True
+        self.needs_refresh = True
 
     @objc_method
-    def tick_(self,t):
+    def doRefreshIfNeeded(self):
         try:
-            if self.needs_update:
+            if self.needs_refresh:
                 self.refresh()
         except:
             pass
@@ -213,7 +213,7 @@ class ElectrumGui(PrintError):
         self.historyVC = None
         self.num_zeros = 0
         self.decimal_point = 5
-        
+
     def createAndShowUI(self):
         self.screen = UIScreen.mainScreen
         irect = rect = self.screen.bounds
@@ -254,9 +254,9 @@ class ElectrumGui(PrintError):
             print ("REGISTERED NETWORK CALLBACKS")
 
         tbl.refresh()
-        
-        self.tickTimer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(0.01, tbl, SEL(b'tick:'), "tickTimer", True)
-        
+
+        heartbeat.Add(tbl, 'doRefreshIfNeeded')
+
         return True
     
     def init_network(self):
@@ -276,12 +276,13 @@ class ElectrumGui(PrintError):
             
     def on_network(self, event, *args):
         print ("ON NETWORK: %s"%event)
-        self.historyVC.needUpdate()
         if event == 'updated':
             pass
         elif event == 'new_transaction':
+            self.historyVC.needUpdate()
             pass
         elif event in ['status', 'banner', 'verified', 'fee']:
+            self.historyVC.needUpdate()
             pass
         else:
             self.print_error("unexpected network message:", event, args)
