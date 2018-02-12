@@ -21,7 +21,7 @@ class HeartBeat(NSObject):
     def tick_(self, t):
         if not NSThread.isMainThread:
             print("WARNING: HeartBeat Timer Tick is not in the process's main thread! FIXME!")
-        time.sleep(0.100) # give other python "threads" a chance to run..
+        time.sleep(0.020) # give other python "threads" a chance to run..
         try:
             funcs = self.funcs
             en = self.funcs.objectEnumerator()

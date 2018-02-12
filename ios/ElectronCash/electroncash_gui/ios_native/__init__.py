@@ -83,11 +83,12 @@ def check_imports():
         print("Error: %s"%str(e))
         return str(e)
 
-class HistoryTableVC(UITableViewController):
+class HistoryTableVC(UITableViewController):    
     # NB: Caller needs to set self.parent to point to the ElectrumGui instance.
     #     I couldn't figure out how to write an objc constructor that also sets properties
     #     for the Python object and calls the obj C super... :/
     #
+    
     @objc_method
     def numberOfSectionsInTableView_(self, tableView) -> int:
         return 1
@@ -291,7 +292,7 @@ class ElectrumGui(PrintError):
         print ("ON NETWORK1: %s"%event)
         # Handle a network message in the GUI thread
         if event == 'status':
-            pass #self.update_status()
+            pass
         elif event == 'banner':
             pass
         elif event == 'verified':
