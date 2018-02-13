@@ -185,6 +185,7 @@ class HistoryTableVC(UITableViewController):
     def needUpdate(self):
         self.needs_refresh = True
 
+    # This method runs in the main thread as it's enqueue using our hacky "Heartbeat" mechanism/workaround for iOS
     @objc_method
     def doRefreshIfNeeded(self):
         try:
@@ -280,10 +281,10 @@ class ElectrumGui(PrintError):
         if event == 'updated':
             pass
         elif event == 'new_transaction':
-            self.historyVC.needUpdate()
+            self.historyVC.needUpdate() #enqueue update to main thread
             pass
         elif event in ['status', 'banner', 'verified', 'fee']:
-            self.historyVC.needUpdate()
+            self.historyVC.needUpdate() #enqueue update to main thread
             pass
         else:
             self.print_error("unexpected network message:", event, args)

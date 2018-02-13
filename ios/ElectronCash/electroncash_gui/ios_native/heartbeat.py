@@ -42,7 +42,23 @@ class HeartBeat(NSObject):
         inv = NSInvocation.invocationWithMethodSignature_(NSMethodSignature.signatureWithObjCTypes_(b'v@:'))
         inv.target = target
         inv.selector = SEL(selNameStr)
-        self.funcs.addObject(inv)
+        self.funcs.addObject_(inv)
+
+
+    @objc_method
+    def removeCallback(self, target, selNameStr):
+        try:
+            ftest = self.funcs
+        except:
+            self.funcs = NSMutableArray.alloc().init()
+        en = self.funcs.objectEnumerator()
+        inv = en.nextObject()
+        while inv:
+            if inv.selector.name == SEL(selNameStr).name and inv.target == target:
+                break
+            inv = en.nextObject()
+        if inv:
+            self.funcs.removeObjectIdenticalTo_(inv)
 
     @objc_method
     def start(self):
@@ -76,3 +92,8 @@ def Add(target, selNameStr):
     if singleton is None:
         Start()
     singleton.addCallback(target, selNameStr)
+
+def Remove(target, selNameStr):
+    if singleton is None:
+        return
+    singleton.removeCallback(target, selNameStr)
