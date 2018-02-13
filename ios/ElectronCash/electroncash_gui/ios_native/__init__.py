@@ -368,6 +368,8 @@ class ElectrumGui(PrintError):
     def main(self):
         
         print("Test Decode result: %s"%check_imports())
+        import hashlib
+        print("HashLib algorithms available: " + str(hashlib.algorithms_available))
 
         try:
             self.init_network()
