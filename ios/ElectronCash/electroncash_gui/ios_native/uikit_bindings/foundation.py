@@ -42,4 +42,4 @@ NSInvocation = ObjCClass('NSInvocation')
 NSMethodSignature = ObjCClass('NSMethodSignature')
 NSEnumerator = ObjCClass('NSEnumerator')
 
-NSNumber = ObjCClass('NSNumber')
+#NSNumber = ObjCClass('NSNumber')

@@ -23,6 +23,7 @@ class HeartBeat(NSObject):
     def init(self):
         self = ObjCInstance(send_super(self, 'init'))
         self.funcs = NSMutableArray.alloc().init()
+        self.tickTimer = None
         #print("Heartbeat: initted super ok!")
         return self
 
@@ -66,14 +67,14 @@ class HeartBeat(NSObject):
 
     @objc_method
     def start(self):
-        self.tickTimer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(0.001, self, SEL(b'tick:'), "tickTimer", True).retain()
+        self.stop()
+        self.tickTimer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(0.001, self, SEL(b'tick:'), "tickTimer", True)
 
     @objc_method
     def stop(self):
         try:
             if self.tickTimer is not None:
                 self.tickTimer.invalidate()
-                self.tickTimer.release()
                 self.tickTimer = None
         except:
             pass
@@ -88,6 +89,7 @@ def Stop():
     global singleton
     if singleton is not None:
         singleton.stop()
+        singleton.autorelease()
         singleton = None
         
 def Add(target, selNameStr):

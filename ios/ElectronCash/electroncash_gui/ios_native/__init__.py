@@ -83,7 +83,8 @@ def check_imports():
         print("Error: %s"%str(e))
         return str(e)
 
-class HistoryTableVC(UITableViewController):    
+
+class HistoryTableVC(UITableViewController):
 
     @objc_method
     def numberOfSectionsInTableView_(self, tableView) -> int:
@@ -366,7 +367,7 @@ class ElectrumGui(PrintError):
 
     # this method is called by Electron Cash libs to start the GUI
     def main(self):
-        
+
         print("Test Decode result: %s"%check_imports())
         import hashlib
         print("HashLib algorithms available: " + str(hashlib.algorithms_available))
