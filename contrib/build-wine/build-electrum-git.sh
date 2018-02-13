@@ -72,7 +72,8 @@ cp electrum-icons/icons_rc.py $WINEPREFIX/drive_c/electrum/gui/qt/
 
 
 # Install frozen dependencies
-$PYTHON -m pip install -r ../../requirements.txt
+$PYTHON -m pip install -r ../../deterministic-build/requirements.txt
+$PYTHON -m pip install -r ../../deterministic-build/requirements-hw.txt
 
 pushd $WINEPREFIX/drive_c/electrum
 $PYTHON setup.py install
@@ -100,6 +101,8 @@ wine "$WINEPREFIX/drive_c/Program Files (x86)/NSIS/makensis.exe" /DPRODUCT_VERSI
 cd dist
 mv electrum-setup.exe $NAME_ROOT-$VERSION-setup.exe
 cd ..
+
+python3 setup.py sdist --format=zip,gztar
 
 echo "Done."
 md5sum dist/electrum*exe

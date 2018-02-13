@@ -33,8 +33,11 @@ from decimal import Decimal
 import base64
 from functools import partial
 
-from PyQt5.QtCore import Qt
 from PyQt5.QtGui import *
+from PyQt5.QtCore import *
+import PyQt5.QtCore as QtCore
+
+from .exception_window import Exception_Hook
 from PyQt5.QtWidgets import *
 
 from electroncash.util import bh2u, bfh
@@ -108,6 +111,9 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
 
         self.gui_object = gui_object
         self.config = config = gui_object.config
+
+        self.setup_exception_hook()
+
         self.network = gui_object.daemon.network
         self.fx = gui_object.daemon.fx
         self.invoices = wallet.invoices
@@ -213,6 +219,9 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
 
     def on_history(self, b):
         self.new_fx_history_signal.emit()
+
+    def setup_exception_hook(self):
+        Exception_Hook(self)
 
     def on_fx_history(self):
         self.history_list.refresh_headers()
@@ -564,24 +573,24 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
             return
         self.print_error("Notifying GUI")
         if len(self.tx_notifications) > 0:
-            # Combine the transactions if there are more then three
-            tx_amount = len(self.tx_notifications)
-            if(tx_amount >= 3):
+            # Combine the transactions if there are at least three
+            num_txns = len(self.tx_notifications)
+            if num_txns >= 3:
                 total_amount = 0
                 for tx in self.tx_notifications:
                     is_relevant, is_mine, v, fee = self.wallet.get_wallet_delta(tx)
-                    if(v > 0):
+                    if v > 0:
                         total_amount += v
-                self.notify(_("%(txs)s new transactions received: Total amount received in the new transactions %(amount)s") \
-                            % { 'txs' : tx_amount, 'amount' : self.format_amount_and_units(total_amount)})
+                self.notify(_("{} new transactions received: Total amount received in the new transactions {}")
+                            .format(num_txns, self.format_amount_and_units(total_amount)))
                 self.tx_notifications = []
             else:
-              for tx in self.tx_notifications:
-                  if tx:
-                      self.tx_notifications.remove(tx)
-                      is_relevant, is_mine, v, fee = self.wallet.get_wallet_delta(tx)
-                      if(v > 0):
-                          self.notify(_("New transaction received: %(amount)s") % { 'amount' : self.format_amount_and_units(v)})
+                for tx in self.tx_notifications:
+                    if tx:
+                        self.tx_notifications.remove(tx)
+                        is_relevant, is_mine, v, fee = self.wallet.get_wallet_delta(tx)
+                        if v > 0:
+                            self.notify(_("New transaction received: {}").format(self.format_amount_and_units(v)))
 
     def notify(self, message):
         if self.tray:
@@ -709,7 +718,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
                 text = _("Synchronizing...")
                 icon = QIcon(":icons/status_waiting.png")
             elif server_lag > 1:
-                text = _("Server is lagging (%d blocks)"%server_lag)
+                text = _("Server is lagging ({} blocks)").format(server_lag)
                 icon = QIcon(":icons/status_lagging.png")
             else:
                 c, u, x = self.wallet.get_balance()
@@ -1295,7 +1304,8 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
 
             if self.payto_e.is_alias and self.payto_e.validated is False:
                 alias = self.payto_e.toPlainText()
-                msg = _('WARNING: the alias "%s" could not be validated via an additional security check, DNSSEC, and thus may not be correct.'%alias) + '\n'
+                msg = _('WARNING: the alias "{}" could not be validated via an additional '
+                        'security check, DNSSEC, and thus may not be correct.').format(alias) + '\n'
                 msg += _('Do you wish to continue?')
                 if not self.question(msg):
                     return
@@ -1706,8 +1716,8 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
         return True
 
     def delete_contacts(self, labels):
-        if not self.question(_("Remove %s from your list of contacts?")
-                             % " + ".join(labels)):
+        if not self.question(_("Remove {} from your list of contacts?")
+                             .format(" + ".join(labels))):
             return
         for label in labels:
             self.contacts.pop(label)
@@ -2007,6 +2017,8 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
             return
         if addr.kind != addr.ADDR_P2PKH:
             self.show_message(_('Cannot sign messages with this type of address.') + '\n\n' + self.msg_sign)
+        if self.wallet.is_watching_only():
+            self.show_message(_('This is a watching-only wallet.'))
             return
         if not self.wallet.is_mine(addr):
             self.show_message(_('Address not in wallet.'))
@@ -2076,6 +2088,9 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
 
     @protected
     def do_decrypt(self, message_e, pubkey_e, encrypted_e, password):
+        if self.wallet.is_watching_only():
+            self.show_message(_('This is a watching-only wallet.'))
+            return
         cyphertext = encrypted_e.toPlainText()
         task = partial(self.wallet.decrypt_message, pubkey_e.text(), cyphertext, password)
         self.wallet.thread.add(task, on_success=lambda text: message_e.setText(text.decode('utf-8')))
@@ -2235,6 +2250,10 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
             self.show_message(_("This is a watching-only wallet"))
             return
 
+        if isinstance(self.wallet, Multisig_Wallet):
+            self.show_message(_('WARNING: This is a multi-signature wallet.') + '\n' +
+                              _('It can not be "backed up" by simply exporting these private keys.'))
+
         d = WindowModalDialog(self, _('Private keys'))
         d.setMinimumSize(850, 300)
         vbox = QVBoxLayout(d)
@@ -2390,32 +2409,13 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
             plt.show()
 
     def do_export_history(self, wallet, fileName, is_csv):
-        history = wallet.get_history()
+        history = wallet.export_history(fx=self.fx)
         lines = []
         for item in history:
-            tx_hash, height, confirmations, timestamp, value, balance = item
-            if height>0:
-                if timestamp is not None:
-                    time_string = format_time(timestamp)
-                else:
-                    time_string = _("unverified")
-            else:
-                time_string = _("unconfirmed")
-
-            if value is not None:
-                value_string = format_satoshis(value, True)
-            else:
-                value_string = '--'
-
-            if tx_hash:
-                label = wallet.get_label(tx_hash)
-            else:
-                label = ""
-
             if is_csv:
-                lines.append([tx_hash, label, confirmations, value_string, time_string])
+                lines.append([item['txid'], item.get('label', ''), item['confirmations'], item['value'], item['date']])
             else:
-                lines.append({'txid':tx_hash, 'date':"%16s"%time_string, 'label':label, 'value':value_string})
+                lines.append(item)
 
         with open(fileName, "w+") as f:
             if is_csv:
@@ -2425,7 +2425,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
                     transaction.writerow(line)
             else:
                 import json
-                f.write(json.dumps(lines, indent = 4))
+                f.write(json.dumps(lines, indent=4))
 
     def sweep_key_dialog(self):
         addresses = self.wallet.get_unused_addresses()
@@ -2689,7 +2689,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
         unit_combo = QComboBox()
         unit_combo.addItems(units)
         unit_combo.setCurrentIndex(units.index(self.base_unit()))
-        def on_unit(x):
+        def on_unit(x, nz):
             unit_result = units[unit_combo.currentIndex()]
             if self.base_unit() == unit_result:
                 return
@@ -2704,13 +2704,14 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
             else:
                 raise Exception('Unknown base unit')
             self.config.set_key('decimal_point', self.decimal_point, True)
+            nz.setMaximum(self.decimal_point)
             self.history_list.update()
             self.request_list.update()
             self.address_list.update()
             for edit, amount in zip(edits, amounts):
                 edit.setAmount(amount)
             self.update_status()
-        unit_combo.currentIndexChanged.connect(on_unit)
+        unit_combo.currentIndexChanged.connect(lambda x: on_unit(x, nz))
         gui_widgets.append((unit_label, unit_combo))
 
         block_explorers = web.BE_sorted_list()

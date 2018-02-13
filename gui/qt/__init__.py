@@ -93,6 +93,10 @@ class ElectrumGui:
         #network.add_jobs([DebugMem([Abstract_Wallet, SPV, Synchronizer,
         #                            ElectrumWindow], interval=5)])
         QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_X11InitThreads)
+        if hasattr(QtCore.Qt, "AA_ShareOpenGLContexts"):
+            QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_ShareOpenGLContexts)
+        if hasattr(QGuiApplication, 'setDesktopFileName'):
+            QGuiApplication.setDesktopFileName('electrum.desktop')
         self.config = config
         self.daemon = daemon
         self.plugins = plugins
@@ -243,6 +247,7 @@ class ElectrumGui:
         except GoBack:
             return
         except:
+            import traceback
             traceback.print_exc(file=sys.stdout)
             return
         self.timer.start()
@@ -251,11 +256,23 @@ class ElectrumGui:
         if not self.start_new_window(path, self.config.get('url')):
             return
         signal.signal(signal.SIGINT, lambda *args: self.app.quit())
+
+        def quit_after_last_window():
+            # on some platforms, not only does exec_ not return but not even
+            # aboutToQuit is emitted (but following this, it should be emitted)
+            if self.app.quitOnLastWindowClosed():
+                self.app.quit()
+        self.app.lastWindowClosed.connect(quit_after_last_window)
+
+        def clean_up():
+            # Shut down the timer cleanly
+            self.timer.stop()
+            # clipboard persistence. see http://www.mail-archive.com/pyqt@riverbankcomputing.com/msg17328.html
+            event = QtCore.QEvent(QtCore.QEvent.Clipboard)
+            self.app.sendEvent(self.app.clipboard(), event)
+            self.tray.hide()
+        self.app.aboutToQuit.connect(clean_up)
+
         # main loop
         self.app.exec_()
-        # Shut down the timer cleanly
-        self.timer.stop()
-        # clipboard persistence. see http://www.mail-archive.com/pyqt@riverbankcomputing.com/msg17328.html
-        event = QtCore.QEvent(QtCore.QEvent.Clipboard)
-        self.app.sendEvent(self.app.clipboard(), event)
-        self.tray.hide()
+        # on some platforms the exec_ call may not return, so use clean_up()
