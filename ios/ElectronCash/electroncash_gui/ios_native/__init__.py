@@ -84,11 +84,7 @@ def check_imports():
         return str(e)
 
 class HistoryTableVC(UITableViewController):    
-    # NB: Caller needs to set self.parent to point to the ElectrumGui instance.
-    #     I couldn't figure out how to write an objc constructor that also sets properties
-    #     for the Python object and calls the obj C super... :/
-    #
-    
+
     @objc_method
     def numberOfSectionsInTableView_(self, tableView) -> int:
         return 1
@@ -96,7 +92,8 @@ class HistoryTableVC(UITableViewController):
     @objc_method
     def tableView_numberOfRowsInSection_(self, tableView, section) -> int:
         try:
-            return len(self.entries)
+            parent = ElectrumGui.gui
+            return len(parent.history)
         except:
             print("Error, no self.entries")
             return 0
@@ -107,7 +104,8 @@ class HistoryTableVC(UITableViewController):
         if cell is None:
             cell = UITableViewCell.alloc().initWithStyle_reuseIdentifier_(UITableViewCellStyleSubtitle, "row")
         try:
-            entry = self.entries[indexPath.row]
+            parent = ElectrumGui.gui
+            entry = parent.history[indexPath.row]
             t = ("%s | Amt: %s | Bal: %s"%(entry[2],entry[4],entry[5]))
             ff = entry[6]
             conf = entry[7]
@@ -125,25 +123,26 @@ class HistoryTableVC(UITableViewController):
     
     @objc_method
     def updateHistoryFromWallet(self):
-        wallet = self.parent.wallet
+        parent = ElectrumGui.gui
+        wallet = parent.wallet
         h = wallet.get_history()
         #item = self.currentItem()
         #current_tx = item.data(0, Qt.UserRole) if item else None
         #self.clear()
-        #fx = self.parent.fx
+        #fx = parent.fx
         #if fx: fx.history_used_spot = False
-        self.entries = []
+        parent.history = []
         for h_item in h:
             tx_hash, height, conf, timestamp, value, balance = h_item
             status, status_str = wallet.get_tx_status(tx_hash, height, conf, timestamp)
             has_invoice = wallet.invoices.paid.get(tx_hash)
             #icon = QIcon(":icons/" + TX_ICONS[status])
-            v_str = self.parent.format_amount(value, True, whitespaces=True)
-            balance_str = self.parent.format_amount(balance, whitespaces=True)
+            v_str = parent.format_amount(value, True, whitespaces=True)
+            balance_str = parent.format_amount(balance, whitespaces=True)
             label = wallet.get_label(tx_hash)
             date = timestamp_to_datetime(time.time() if conf <= 0 else timestamp)
             entry = ['', tx_hash, status_str, label, v_str, balance_str, date, conf]
-            self.entries.insert(0,entry) # reverse order
+            parent.history.insert(0,entry) # reverse order
             #if fx and fx.show_history():
             #    date = timestamp_to_datetime(time.time() if conf <= 0 else timestamp)
             #    for amount in [value, balance]:
@@ -168,7 +167,7 @@ class HistoryTableVC(UITableViewController):
             #self.insertTopLevelItem(0, item)
             #if current_tx == tx_hash:
             #    self.setCurrentItem(item)
-        print ("fetched %d entries from history"%len(self.entries))
+        print ("fetched %d entries from history"%len(parent.history))
 
 
     @objc_method
@@ -179,20 +178,17 @@ class HistoryTableVC(UITableViewController):
         except:
             pass
         self.tableView.reloadData()
-        self.needs_refresh = False
+        ElectrumGui.gui.historyNeedsRefresh = False
         
     @objc_method
     def needUpdate(self):
-        self.needs_refresh = True
+        ElectrumGui.gui.historyNeedsRefresh = True
 
     # This method runs in the main thread as it's enqueue using our hacky "Heartbeat" mechanism/workaround for iOS
     @objc_method
     def doRefreshIfNeeded(self):
-        try:
-            if self.needs_refresh:
-                self.refresh()
-        except:
-            pass
+        if ElectrumGui.gui.historyNeedsRefresh:
+            self.refresh()
 
 class ElectrumGui(PrintError):
 
@@ -215,6 +211,8 @@ class ElectrumGui(PrintError):
         self.historyVC = None
         self.num_zeros = 0
         self.decimal_point = 5
+        self.history = []
+        self.historyNeedsRefresh = False
 
     def createAndShowUI(self):
         self.screen = UIScreen.mainScreen
@@ -230,7 +228,6 @@ class ElectrumGui(PrintError):
         self.window.backgroundColor = UIColor.whiteColor
 
         self.historyVC = tbl = HistoryTableVC.alloc().initWithStyle_(UITableViewStylePlain)
-        tbl.parent = self
         tbl.title = "History" # objc property
         tbl.view.frame = irect
 
