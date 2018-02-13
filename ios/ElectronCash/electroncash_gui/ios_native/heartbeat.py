@@ -29,6 +29,7 @@ class HeartBeat(NSObject):
     @objc_method
     def dealloc(self) -> None:
         self.stop()
+        self.funcs.release()
         self.funcs = None
         send_super(self, 'dealloc')
 
@@ -65,13 +66,14 @@ class HeartBeat(NSObject):
 
     @objc_method
     def start(self):
-        self.tickTimer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(0.001, self, SEL(b'tick:'), "tickTimer", True)
+        self.tickTimer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(0.001, self, SEL(b'tick:'), "tickTimer", True).retain()
 
     @objc_method
     def stop(self):
         try:
             if self.tickTimer is not None:
                 self.tickTimer.invalidate()
+                self.tickTimer.release()
                 self.tickTimer = None
         except:
             pass

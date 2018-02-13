@@ -102,7 +102,7 @@ class HistoryTableVC(UITableViewController):
     def tableView_cellForRowAtIndexPath_(self, tableView, indexPath):
         cell = tableView.dequeueReusableCellWithIdentifier_("row")
         if cell is None:
-            cell = UITableViewCell.alloc().initWithStyle_reuseIdentifier_(UITableViewCellStyleSubtitle, "row")
+            cell = UITableViewCell.alloc().initWithStyle_reuseIdentifier_(UITableViewCellStyleSubtitle, "row").autorelease()
         try:
             parent = ElectrumGui.gui
             entry = parent.history[indexPath.row]
@@ -179,7 +179,7 @@ class HistoryTableVC(UITableViewController):
             pass
         self.tableView.reloadData()
         ElectrumGui.gui.historyNeedsRefresh = False
-        
+
     @objc_method
     def needUpdate(self):
         ElectrumGui.gui.historyNeedsRefresh = True
@@ -189,6 +189,14 @@ class HistoryTableVC(UITableViewController):
     def doRefreshIfNeeded(self):
         if ElectrumGui.gui.historyNeedsRefresh:
             self.refresh()
+
+    @objc_method
+    def showRefreshControl(self):
+        if self.refreshControl is not None and not self.refreshControl.isRefreshing():
+            # the below starts up the table view in the "refreshing" state..
+            self.refreshControl.beginRefreshing()
+            self.tableView.setContentOffset_animated_(CGPointMake(0, self.tableView.contentOffset.y-self.refreshControl.frame.size.height), True)
+
 
 class ElectrumGui(PrintError):
 
@@ -222,16 +230,18 @@ class ElectrumGui(PrintError):
             irect.origin.y += sb.size.height
             irect.size.height -= sb.size.height
         self.window = UIWindow.alloc().initWithFrame_(rect)
-        self.tabController = self.controller = UITabBarController.alloc().init()
+        self.tabController = self.controller = UITabBarController.alloc().init().autorelease()
 
 
         self.window.backgroundColor = UIColor.whiteColor
 
-        self.historyVC = tbl = HistoryTableVC.alloc().initWithStyle_(UITableViewStylePlain)
+        self.historyVC = tbl = HistoryTableVC.alloc().initWithStyle_(UITableViewStylePlain).autorelease()
         tbl.title = "History" # objc property
         tbl.view.frame = irect
 
-        a = NSMutableArray.alloc().initWithObject_(tbl)
+        tbl.refreshControl = UIRefreshControl.alloc().init().autorelease()
+
+        a = NSMutableArray.alloc().initWithObject_(tbl).autorelease()
 
         self.controller.viewControllers = a
 
@@ -253,6 +263,8 @@ class ElectrumGui(PrintError):
             print ("REGISTERED NETWORK CALLBACKS")
 
         tbl.refresh()
+        tbl.refreshControl.addTarget_action_forControlEvents_(tbl,SEL('needUpdate'), UIControlEventValueChanged)
+        tbl.showRefreshControl()
 
         heartbeat.Add(tbl, 'doRefreshIfNeeded')
 
