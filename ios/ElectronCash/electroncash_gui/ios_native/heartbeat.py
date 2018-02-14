@@ -22,7 +22,7 @@ class HeartBeat(NSObject):
     @objc_method
     def init(self):
         self = ObjCInstance(send_super(self, 'init'))
-        self.funcs = NSMutableArray.alloc().init()
+        self.funcs = NSMutableArray.alloc().init().autorelease()
         self.tickTimer = None
         #print("Heartbeat: initted super ok!")
         return self
@@ -30,7 +30,6 @@ class HeartBeat(NSObject):
     @objc_method
     def dealloc(self) -> None:
         self.stop()
-        self.funcs.release()
         self.funcs = None
         send_super(self, 'dealloc')
 
