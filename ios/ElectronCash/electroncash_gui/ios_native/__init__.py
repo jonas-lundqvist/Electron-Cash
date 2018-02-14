@@ -90,7 +90,6 @@ class HistoryTableVC(UITableViewController):
     @objc_method
     def initWithStyle_(self, style : int):
         self = ObjCInstance(send_super(self, 'initWithStyle:', style, argtypes=[c_int]))
-        print("HistoryTableVC init (MyObj)")
         self.needsRefresh = False
         return self
 
