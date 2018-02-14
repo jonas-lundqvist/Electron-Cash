@@ -38,7 +38,6 @@ try:
 except Exception as e:
     sys.exit("Error: Could not import iOS libs: %s"%str(e))
 
-
 from electroncash.i18n import _, set_language
 #from electroncash.plugins import run_hook
 from electroncash import WalletStorage, Wallet
@@ -85,6 +84,20 @@ def check_imports():
 
 
 class HistoryTableVC(UITableViewController):
+    needsRefresh = objc_property()
+
+
+    @objc_method
+    def initWithStyle_(self, style : int):
+        self = ObjCInstance(send_super(self, 'initWithStyle:', style, argtypes=[c_int]))
+        print("HistoryTableVC init (MyObj)")
+        self.needsRefresh = False
+        return self
+
+    @objc_method
+    def dealloc(self) -> None:
+        self.needsRefresh = None
+        send_super(self, 'dealloc')
 
     @objc_method
     def numberOfSectionsInTableView_(self, tableView) -> int:
@@ -96,7 +109,7 @@ class HistoryTableVC(UITableViewController):
             parent = ElectrumGui.gui
             return len(parent.history)
         except:
-            print("Error, no self.entries")
+            print("Error, no history")
             return 0
 
     @objc_method
@@ -179,16 +192,16 @@ class HistoryTableVC(UITableViewController):
         except:
             pass
         self.tableView.reloadData()
-        ElectrumGui.gui.historyNeedsRefresh = False
+        self.needsRefresh = False
 
     @objc_method
     def needUpdate(self):
-        ElectrumGui.gui.historyNeedsRefresh = True
+        self.needsRefresh = True
 
     # This method runs in the main thread as it's enqueue using our hacky "Heartbeat" mechanism/workaround for iOS
     @objc_method
     def doRefreshIfNeeded(self):
-        if ElectrumGui.gui.historyNeedsRefresh:
+        if self.needsRefresh:
             self.refresh()
 
     @objc_method
@@ -221,7 +234,6 @@ class ElectrumGui(PrintError):
         self.num_zeros = 0
         self.decimal_point = 5
         self.history = []
-        self.historyNeedsRefresh = False
 
     def createAndShowUI(self):
         self.screen = UIScreen.mainScreen
@@ -371,6 +383,8 @@ class ElectrumGui(PrintError):
         print("Test Decode result: %s"%check_imports())
         import hashlib
         print("HashLib algorithms available: " + str(hashlib.algorithms_available))
+        import platform
+        print ("Platform %s uname: %s"%(platform.platform(),platform.uname()))
 
         try:
             self.init_network()

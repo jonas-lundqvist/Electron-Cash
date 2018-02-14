@@ -63,6 +63,15 @@ if [ -f "${infoplist}" ]; then
 	fi
 fi
 
+patches=patches/*.patch
+if [ -n "$patches" ]; then
+	echo "Applying patches..."
+	echo ""
+	for p in $patches; do
+		patch -p 1 < $p
+	done
+fi
+
 echo ''
 echo '**************************************************************************'
 echo '*                                                                        *'
