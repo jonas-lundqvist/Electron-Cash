@@ -72,12 +72,6 @@ if [ -n "$patches" ]; then
 	done
 fi
 
-echo ""
-echo "Overriding provided libPytho.a with our fixed one (remove me once they accept our PR)..."
-rm -f iOS/Python/libPython.a
-cat overrides/libPython.a.bz2 | bunzip2 -c > iOS/Python/libPython.a
-chmod 555 iOS/Python/libPython.a
-
 echo ''
 echo '**************************************************************************'
 echo '*                                                                        *'

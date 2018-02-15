@@ -310,20 +310,6 @@ class ElectrumGui(PrintError):
         else:
             self.print_error("unexpected network message:", event, args)
 
-    def on_network1(self, event, args=None):
-        print ("ON NETWORK1: %s"%event)
-        # Handle a network message in the GUI thread
-        if event == 'status':
-            pass
-        elif event == 'banner':
-            pass
-        elif event == 'verified':
-            pass
-        elif event == 'fee':
-            pass
-        else:
-            self.print_error("unexpected network_qt signal:", event, args)
-
     @staticmethod
     def prompt_password(prmpt, dummy=0):
         print("prompt_password(%s,%s)"%(prmpt,str(dummy)))
