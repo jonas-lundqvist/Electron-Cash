@@ -11,6 +11,39 @@ try:
 except Exception as e:
     sys.exit("Error: Could not import iOS libs: %s"%str(e))
 
+class TxDetail(UIViewController):
+    # entry = ('', tx_hash, status_str, label, v_str, balance_str, date_str, conf, status, status_uiimage)
+    entry = objc_property() # an NSArray of basically the history entry
+
+    @objc_method
+    def initWithEntry_(self, entry):
+        self = ObjCInstance(send_super(self, 'init'))
+        self.entry = entry
+        self.title = "Transaction Details"
+        return self
+    
+    @objc_method
+    def dealloc(self) -> None:
+        #print("TxDetail dealloc")
+        self.entry = None
+        self.title = None
+        self.view = None
+        send_super(self, 'dealloc')
+    
+    @objc_method
+    def loadView(self) -> None:
+        self.view = UIView.alloc().init().autorelease()
+        lbl = UILabel.alloc().init().autorelease()
+        lbl.text = self.entry[1]
+        lbl.adjustsFontSizeForWidth = True
+        rect = CGRectMake(0,30,320,200)
+        lbl.frame = rect
+        iv = UIImageView.alloc().initWithImage_(self.entry[9]).autorelease()
+        rect = CGRectMake(0,260,320,200)
+        iv.frame = rect
+        self.view.addSubview_(lbl)
+        self.view.addSubview_(iv)
+ 
 # History Tab -- shows tx's, etc
 class HistoryTableVC(UITableViewController):
     needsRefresh = objc_property()
@@ -21,7 +54,6 @@ class HistoryTableVC(UITableViewController):
         self = ObjCInstance(send_super(self, 'initWithStyle:', style, argtypes=[c_int]))
         self.needsRefresh = False
         # setup the status icons array.. cache the images basically
-        self.statusImages = NSMutableArray.arrayWithCapacity_(10)
         tx_icons = [
             "warning.png",
             "warning.png",
@@ -34,10 +66,11 @@ class HistoryTableVC(UITableViewController):
             "clock5.png",
             "confirmed.png",
         ]
+        self.statusImages = NSMutableArray.arrayWithCapacity_(len(tx_icons))
         for icon in tx_icons:
             img = utils.uiimage_get(icon)
-            if img is not None:
-                self.statusImages.addObject_(img)
+            assert img is not None
+            self.statusImages.addObject_(img)
                 
         heartbeat.Add(self, 'doRefreshIfNeeded')
 
@@ -73,7 +106,7 @@ class HistoryTableVC(UITableViewController):
             entry = parent.history[indexPath.row]
             _, tx_hash, status_str, label, v_str, balance_str, date, conf, status, *_ = entry
 
-            ff = date
+            ff = str(date)
             if conf > 0:
                 ff = "%s confirmations"%conf
             if label is None:
@@ -93,7 +126,7 @@ class HistoryTableVC(UITableViewController):
                                                         + ' - Bal: <font face="courier,courier new, fixed"><strong>%s</strong></font>'
                                                         + ' - <font size=-1 color="#666666"><i>(%s)</i></font>'
                                                         + '</p>')
-                                                        %(html.escape(v_str),html.escape(balance_str),ff))
+                                                        %(html.escape(v_str),html.escape(balance_str),html.escape(ff)))
             detail.addAttribute_value_range_(NSParagraphStyleAttributeName, pstyle, NSRange(0,detail.length()))
             if status >= 0 and status < len(self.statusImages):
                 cell.imageView.image = self.statusImages[status]
@@ -121,6 +154,21 @@ class HistoryTableVC(UITableViewController):
             cell.accessoryType = None
         return cell
     
+    # Below 2 methods conform to UITableViewDelegate protocol
+    @objc_method
+    def tableView_accessoryButtonTappedForRowWithIndexPath_(self, tv, indexPath):
+        #print("ACCESSORY TAPPED CALLED")
+        pass
+    
+    @objc_method
+    def tableView_didSelectRowAtIndexPath_(self, tv, indexPath):
+        #print("DID SELECT ROW CALLED FOR ROW %d"%indexPath.row)
+        parent = gui.ElectrumGui.gui
+        hentry = parent.history[indexPath.row]
+        entry = [str(it) for it in hentry]
+        entry.append(self.statusImages[hentry[8]])
+        parent.historyNav.pushViewController_animated_(TxDetail.alloc().initWithEntry_(entry).autorelease(), True)
+    
     @objc_method
     def updateHistoryFromWallet(self):
         parent = gui.ElectrumGui.gui
@@ -141,7 +189,7 @@ class HistoryTableVC(UITableViewController):
             balance_str = parent.format_amount(balance, whitespaces=True)
             label = wallet.get_label(tx_hash)
             date = timestamp_to_datetime(time.time() if conf <= 0 else timestamp)
-            entry = ['', tx_hash, status_str, label, v_str, balance_str, date, conf, status]
+            entry = ('', tx_hash, status_str, label, v_str, balance_str, date, conf, status)
             parent.history.insert(0,entry) # reverse order
             #if fx and fx.show_history():
             #    date = timestamp_to_datetime(time.time() if conf <= 0 else timestamp)
