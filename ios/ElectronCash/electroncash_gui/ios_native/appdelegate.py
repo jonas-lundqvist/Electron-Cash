@@ -2,6 +2,7 @@
 #
 
 from .uikit_bindings import *
+from . import gui
 import ElectronCash.app
 
 class PythonAppDelegate(UIResponder):
@@ -20,4 +21,4 @@ class PythonAppDelegate(UIResponder):
     @objc_method
     def application_didChangeStatusBarOrientation_(self, application, oldStatusBarOrientation: int) -> None:
         print("ROTATED", oldStatusBarOrientation)
-
+        gui.ElectrumGui.gui.on_rotated()

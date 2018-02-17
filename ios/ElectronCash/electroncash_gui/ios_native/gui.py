@@ -84,6 +84,28 @@ def check_imports():
         print("Error: %s"%str(e))
         return str(e)
 
+class RotationHackWhyWhyWhy(NSObject):
+    
+    @objc_method
+    def doHack_(self, ignored):
+        print("ROTATION HACK CALLED")
+        ElectrumGui.gui.hackTimer = None
+        screen = UIScreen.mainScreen
+        irect = screen.bounds
+        rect = screen.bounds
+        if not UIApplication.sharedApplication.isStatusBarHidden():
+            sb = UIApplication.sharedApplication.statusBarFrame
+            irect.origin.y += sb.size.height
+            irect.size.height -= sb.size.height
+        window = ElectrumGui.gui.window
+        window.frame = rect
+        controller = ElectrumGui.gui.tabController
+
+        for a in controller.viewControllers:
+            #todo: figure out why we end up under the status bar after screen rotation!
+            a.view.frame = irect
+            a.wantsFullScreenLayout = True
+
 
 # Manages the GUI. Part of the ElectronCash API so you can't rename this class easily.
 class ElectrumGui(PrintError):
@@ -108,6 +130,8 @@ class ElectrumGui(PrintError):
         self.num_zeros = 3
         self.decimal_point = 5
         self.history = []
+        self.hack = None
+        self.hackTimer = None
 
     def createAndShowUI(self):
         self.screen = UIScreen.mainScreen
@@ -119,12 +143,10 @@ class ElectrumGui(PrintError):
         self.window = UIWindow.alloc().initWithFrame_(rect)
         self.tabController = self.controller = UITabBarController.alloc().init().autorelease()
 
-
         self.window.backgroundColor = UIColor.whiteColor
 
         self.historyVC = tbl = history.HistoryTableVC.alloc().initWithStyle_(UITableViewStylePlain).autorelease()
         tbl.title = "History" # objc property
-        tbl.view.frame = irect
 
         tbl.refreshControl = UIRefreshControl.alloc().init().autorelease()
 
@@ -138,7 +160,12 @@ class ElectrumGui(PrintError):
         self.window.rootViewController = self.controller
 
         self.window.makeKeyAndVisible()
-                        
+
+        #todo: figure out why we end up under the status bar after screen rotation!
+        tbl.view.frame = irect
+        self.controller.wantsFullScreenLayout = True
+        tbl.wantsFullScreenLayout = True
+                 
         # network callbacks
         if self.daemon.network:
             self.daemon.network.register_callback(self.on_history, ['on_history'])
@@ -156,7 +183,21 @@ class ElectrumGui(PrintError):
         tbl.refreshControl.addTarget_action_forControlEvents_(tbl,SEL('needUpdate'), UIControlEventValueChanged)
         tbl.showRefreshControl()
         
+        self.hack = RotationHackWhyWhyWhy.alloc().init()
+        # I have no idea what's going on here. TODO: figure out why status bar looks messed up
+        # this below workaround is a horrible hack.
+        NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(0.250, self.hack, SEL(b'doHack:'), "hackTimer", False)
+        NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(1.250, self.hack, SEL(b'doHack:'), "hackTimer", False)
+        
         return True
+    
+    def on_rotated(self): # called by PythonAppDelegate after screen rotation
+        if self.hackTimer is not None:
+            self.hackTimer.invalidate()
+        if self.hack is not None:
+            offsetTime = 0.200
+            self.hackTimer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(offsetTime, self.hack, SEL(b'doHack:'), "hackTimer", False)
+
     
     def init_network(self):
         # Show network dialog if config does not exist

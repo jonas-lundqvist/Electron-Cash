@@ -4,6 +4,7 @@ from . import heartbeat
 from electroncash import WalletStorage, Wallet
 from electroncash.util import timestamp_to_datetime
 import time
+import html
 
 try:
     from .uikit_bindings import *
@@ -80,9 +81,9 @@ class HistoryTableVC(UITableViewController):
             label = "Test tx bla bla muaha this is a test" if indexPath.row % 2 < 1 else ''
             title = utils.nsattributedstring_from_html(('<font face="system font,arial,helvetica,verdana" size=2>%s</font>'
                                                        + '<font face="system font,arial,helvetica,verdana" size=4>%s<font color="#996699"><b>%s</b></font></font>')
-                                                       %(status_str,
+                                                       %(html.escape(status_str),
                                                          ' - ' if len(label)>0 else '',
-                                                         ''+label+'' if len(label)>0 else ''
+                                                         ''+html.escape(label)+'' if len(label)>0 else ''
                                                          ))
             pstyle = NSMutableParagraphStyle.alloc().init().autorelease()
             pstyle.lineBreakMode = NSLineBreakByTruncatingTail
@@ -92,7 +93,7 @@ class HistoryTableVC(UITableViewController):
                                                         + ' - Bal: <font face="courier,courier new, fixed"><strong>%s</strong></font>'
                                                         + ' - <font size=-1 color="#666666"><i>(%s)</i></font>'
                                                         + '</p>')
-                                                        %(v_str,balance_str,ff))
+                                                        %(html.escape(v_str),html.escape(balance_str),ff))
             detail.addAttribute_value_range_(NSParagraphStyleAttributeName, pstyle, NSRange(0,detail.length()))
             if status >= 0 and status < len(self.statusImages):
                 cell.imageView.image = self.statusImages[status]
