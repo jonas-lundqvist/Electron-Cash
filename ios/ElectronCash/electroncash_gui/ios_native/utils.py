@@ -71,3 +71,7 @@ def uiimage_get(fileName: str) -> ObjCInstance:
             return UIImage.alloc().initWithContentsOfFile_(f).autorelease()
     f=get_bundle_image_path(fileName)
     return UIImage.alloc().initWithContentsOfFile_(f).autorelease()
+
+def nsattributedstring_from_html(html : str) -> ObjCInstance:
+    data = ns_from_py(html.encode('utf-8'))
+    return NSMutableAttributedString.alloc().initWithHTML_documentAttributes_(data,None).autorelease()

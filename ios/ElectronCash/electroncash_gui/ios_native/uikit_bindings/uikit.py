@@ -263,6 +263,11 @@ UITableViewController = ObjCClass('UITableViewController')
 UITableViewStylePlain = 0
 UITableViewStyleGrouped = 1
 
+UITableViewCellAccessoryNone = 0 # don't show any accessory view
+UITableViewCellAccessoryDisclosureIndicator = 1 # regular chevron. doesn't track
+UITableViewCellAccessoryDetailDisclosureButton = 2 # info button w/ chevron. tracks
+UITableViewCellAccessoryCheckmark = 3 # checkmark. doesn't track
+UITableViewCellAccessoryDetailButton = 4 # info button. tracks
 
 NSIndexPath = ObjCClass('NSIndexPath')
 
@@ -303,3 +308,33 @@ UISlider = ObjCClass('UISlider')
 
 # UISwitch.h
 UISwitch = ObjCClass('UISwitch')
+
+
+# Attributed String stuff
+NSAttributedString = ObjCClass('NSAttributedString')
+NSMutableAttributedString = ObjCClass('NSMutableAttributedString')
+# Paragraph Style
+NSParagraphStyle = ObjCClass('NSParagraphStyle')
+NSMutableParagraphStyle = ObjCClass('NSMutableParagraphStyle')
+# Below Attributes come from NSAttributedString.h
+NSFontAttributeName = 'NSFont'
+NSParagraphStyleAttributeName = 'NSParagraphStyle'
+NSForegroundColorAttributeName = 'NSColor'
+NSBackgroundColorAttributeName = 'NSBackgroundColor'
+NSLigatureAttributeName = 'NSLigature'
+NSKernAttributeName = 'NSKern'
+NSStrikethroughStyleAttributeName = 'NSStrikethrough'
+NSUnderlineStyleAttributeName = 'NSUnderline'
+NSStrokeColorAttributeName = 'NSStrokeColor'
+NSStrokeWidthAttributeName = 'NSStrokeWidth'
+NSShadowAttributeName = 'NSShadow'
+NSTextEffectAttributeName = 'NSTextEffect'
+NSAttachmentAttributeName = 'NSAttachment'
+NSLinkAttributeName = 'NSLink'
+NSBaselineOffsetAttributeName = 'NSBaselineOffset'
+NSUnderlineColorAttributeName = 'NSUnderlineColor'
+NSStrikethroughColorAttributeName = 'NSStrikethroughColor'
+NSObliquenessAttributeName = 'NSObliqueness'
+NSExpansionAttributeName = 'NSExpansion'
+NSWritingDirectionAttributeName = 'NSWritingDirection'
+NSVerticalGlyphFormAttributeName = 'CTVerticalForms'

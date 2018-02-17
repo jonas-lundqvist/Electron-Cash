@@ -105,7 +105,7 @@ class ElectrumGui(PrintError):
         self.controller = None
         self.tabController = None
         self.historyVC = None
-        self.num_zeros = 0
+        self.num_zeros = 3
         self.decimal_point = 5
         self.history = []
 

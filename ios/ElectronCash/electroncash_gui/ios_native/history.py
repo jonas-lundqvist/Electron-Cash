@@ -72,21 +72,52 @@ class HistoryTableVC(UITableViewController):
             entry = parent.history[indexPath.row]
             _, tx_hash, status_str, label, v_str, balance_str, date, conf, status, *_ = entry
 
-            t = ("%s | Amt: %s | Bal: %s"%(status_str,v_str,balance_str))
             ff = date
             if conf > 0:
                 ff = "%s confirmations"%conf
-            t2 = ("%s | %s"%(ff,label))
+            if label is None:
+                label = ''
+            label = "Test tx bla bla muaha this is a test" if indexPath.row % 2 < 1 else ''
+            title = utils.nsattributedstring_from_html(('<font face="system font,arial,helvetica,verdana" size=2>%s</font>'
+                                                       + '<font face="system font,arial,helvetica,verdana" size=4>%s<font color="#996699"><b>%s</b></font></font>')
+                                                       %(status_str,
+                                                         ' - ' if len(label)>0 else '',
+                                                         ''+label+'' if len(label)>0 else ''
+                                                         ))
+            pstyle = NSMutableParagraphStyle.alloc().init().autorelease()
+            pstyle.lineBreakMode = NSLineBreakByTruncatingTail
+            title.addAttribute_value_range_(NSParagraphStyleAttributeName, pstyle, NSRange(0,title.length()))
+            detail = utils.nsattributedstring_from_html(('<p align="justify" style="font-family:system font,arial,helvetica,verdana">'
+                                                        + 'Amt: <font face="courier,couerier new,fixed"><strong>%s</strong></font>'
+                                                        + ' - Bal: <font face="courier,courier new, fixed"><strong>%s</strong></font>'
+                                                        + ' - <font size=-1 color="#666666"><i>(%s)</i></font>'
+                                                        + '</p>')
+                                                        %(v_str,balance_str,ff))
+            detail.addAttribute_value_range_(NSParagraphStyleAttributeName, pstyle, NSRange(0,detail.length()))
             if status >= 0 and status < len(self.statusImages):
                 cell.imageView.image = self.statusImages[status]
             else:
                 cell.imageView.image = None
-            cell.textLabel.text = t
-            cell.textLabel.adjustsFontSizeToFitWidth = True
-            cell.detailTextLabel.text = t2
-            cell.detailTextLabel.adjustsFontSizeToFitWidth = True
-        except:
+            cell.textLabel.text = None
+            cell.textLabel.adjustsFontSizeToFitWidth = False if len(label) > 0 else True
+            cell.textLabel.lineBreakMode = NSLineBreakByTruncatingTail# if len(label) > 0 else NSLineBreakByClipping
+            cell.textLabel.numberOfLines = 1 #if len(label) <= 0 else 2
+            cell.textLabel.attributedText = title
+            cell.textLabel.updateConstraintsIfNeeded()
+            cell.detailTextLabel.text = None
+            cell.detailTextLabel.adjustsFontSizeToFitWidth = False
+            cell.detailTextLabel.lineBreakMode = NSLineBreakByTruncatingTail
+            cell.detailTextLabel.numberOfLines = 1
+            cell.detailTextLabel.attributedText = detail
+            cell.detailTextLabel.updateConstraintsIfNeeded()
+            cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator
+        except Exception as e:
+            print("exception in tableView_cellForRowAtIndexPath_: %s"%str(e))
+            cell.textLabel.attributedText = None
             cell.textLabel.text = "*Error*"
+            cell.detailTextLabel.attributedText = None
+            cell.detailTextLabel.text = None
+            cell.accessoryType = None
         return cell
     
     @objc_method
