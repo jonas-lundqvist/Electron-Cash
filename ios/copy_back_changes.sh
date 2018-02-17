@@ -11,6 +11,7 @@ cd $projdir
 
 a=ElectronCash/*.py
 b=`find ElectronCash/electroncash_gui -type f -name \*.py -print`
+b_imgs=`find ElectronCash/electroncash_gui -type f -name \*.png -print`
 c=`find ElectronCash/electroncash -type f -name \*.py -print`
 popd > /dev/null
 
@@ -55,7 +56,7 @@ function doIt() {
     fi
 }
 
-for file in $a $b; do
+for file in $a $b $b_imgs; do
     f1="${file}"
     f2="${projdir}/${file}"
     doIt "$f1" "$f2" "ElectronCash/"

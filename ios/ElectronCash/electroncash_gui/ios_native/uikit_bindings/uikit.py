@@ -150,6 +150,12 @@ UIControlStateReserved = 0xFF000000
 # UIImage.h
 UIImage = ObjCClass('UIImage')
 
+# UIImageRenderingMode
+UIImageRenderingModeAutomatic = 0          # Use the default rendering mode for the context where the image is used
+UIImageRenderingModeAlwaysOriginal = 1     # Always draw the original image, without treating it as a template
+UIImageRenderingModeAlwaysTemplate = 2     # Always draw the image as a template image, ignoring its color information
+
+
 # UIImageView.h
 UIImageView = ObjCClass('UIImageView')
 

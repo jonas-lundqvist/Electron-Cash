@@ -24,7 +24,7 @@ setup(
     author='Calin Culianu',
     author_email='calin.culianu@gmail.com',
     license='MIT license',
-    package_data={'': ["*.json", "*.po", "*.mo", "*.pot", "*.txt", "locale/*", "locale/*/*", "locale/*/*/*", "wordlist/*.txt"]},
+    package_data={'': ["*.json", "*.po", "*.mo", "*.pot", "*.txt", "locale/*", "locale/*/*", "locale/*/*/*", "wordlist/*.txt", "*.png"]},
     include_package_data=True,
     packages=find_packages(
         exclude=[
