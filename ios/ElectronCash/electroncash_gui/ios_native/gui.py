@@ -154,12 +154,15 @@ class ElectrumGui(PrintError):
         
         self.helper = GuiHelper.alloc().init()
         
+        print("UI Created Ok")
+        
         return True
     
     def destroyUI(self):
         if self.window is None:
             return
         self.daemon.network.unregister_callback(self.on_history)
+        self.daemon.network.unregister_callback(self.on_network)
         if self.helperTimer is not None:
             self.helperTimer.invalidate()
         self.helperTimer = None
@@ -190,27 +193,25 @@ class ElectrumGui(PrintError):
             
     def on_history(self, b):
         print("------------ ON HISTORY ----------")
-        if self.historyVC:
-            self.historyVC.refresh()
+        assert self.historyVC is not None
+        self.historyVC.needUpdate()
             
     def on_network(self, event, *args):
         print ("ON NETWORK: %s"%event)
+        assert self.historyVC is not None
         if event == 'updated':
             pass
         elif event == 'new_transaction':
             self.historyVC.needUpdate() #enqueue update to main thread
-            pass
         elif event in ['status', 'banner', 'verified', 'fee']:
             self.historyVC.needUpdate() #enqueue update to main thread
-            pass
         else:
             self.print_error("unexpected network message:", event, args)
 
     @staticmethod
     def prompt_password(prmpt, dummy=0):
-        print("prompt_password(%s,%s)"%(prmpt,str(dummy)))
+        print("prompt_password(%s,%s) thread=%s mainThread?=%s"%(prmpt,str(dummy),NSThread.currentThread.description,str(NSThread.currentThread.isMainThread)))
         return "bchbch"
-
 
     def generate_wallet(self, path):
         with open(path, "wb") as fdesc:
@@ -260,7 +261,6 @@ class ElectrumGui(PrintError):
 
     # this method is called by Electron Cash libs to start the GUI
     def main(self):
-
         print("Test Decode result: %s"%check_imports())
         import hashlib
         print("HashLib algorithms available: " + str(hashlib.algorithms_available))
