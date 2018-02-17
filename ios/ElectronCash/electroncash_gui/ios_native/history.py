@@ -1,5 +1,6 @@
 from . import utils
 from . import gui
+from . import heartbeat
 from electroncash import WalletStorage, Wallet
 from electroncash.util import timestamp_to_datetime
 import time
@@ -35,11 +36,15 @@ class HistoryTableVC(UITableViewController):
         for icon in tx_icons:
             img = utils.uiimage_get(icon)
             if img is not None:
-                self.statusImages.addObject_(img)        
+                self.statusImages.addObject_(img)
+                
+        heartbeat.Add(self, 'doRefreshIfNeeded')
+
         return self
 
     @objc_method
     def dealloc(self) -> None:
+        heartbeat.Remove(self, 'doRefreshIfNeeded')
         self.needsRefresh = None
         self.statusImages = None
         send_super(self, 'dealloc')
@@ -65,13 +70,13 @@ class HistoryTableVC(UITableViewController):
         try:
             parent = gui.ElectrumGui.gui
             entry = parent.history[indexPath.row]
-            t = ("%s | Amt: %s | Bal: %s"%(entry[2],entry[4],entry[5]))
-            ff = entry[6]
-            conf = entry[7]
-            status = entry[8]
+            _, tx_hash, status_str, label, v_str, balance_str, date, conf, status, *_ = entry
+
+            t = ("%s | Amt: %s | Bal: %s"%(status_str,v_str,balance_str))
+            ff = date
             if conf > 0:
                 ff = "%s confirmations"%conf
-            t2 = ("%s | %s"%(ff,entry[3]))
+            t2 = ("%s | %s"%(ff,label))
             if status >= 0 and status < len(self.statusImages):
                 cell.imageView.image = self.statusImages[status]
             else:
@@ -79,7 +84,6 @@ class HistoryTableVC(UITableViewController):
             cell.textLabel.text = t
             cell.textLabel.adjustsFontSizeToFitWidth = True
             cell.detailTextLabel.text = t2
-            #cell.detailTextLabel.lineBreakMode = NSLineBreakByWordWrapping
             cell.detailTextLabel.adjustsFontSizeToFitWidth = True
         except:
             cell.textLabel.text = "*Error*"

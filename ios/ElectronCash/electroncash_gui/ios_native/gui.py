@@ -155,9 +155,7 @@ class ElectrumGui(PrintError):
         tbl.refresh()
         tbl.refreshControl.addTarget_action_forControlEvents_(tbl,SEL('needUpdate'), UIControlEventValueChanged)
         tbl.showRefreshControl()
-
-        heartbeat.Add(tbl, 'doRefreshIfNeeded')
-
+        
         return True
     
     def init_network(self):

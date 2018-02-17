@@ -63,8 +63,16 @@ if [ -f "${infoplist}" ]; then
 	fi
 fi
 
+if [ -d overrides/ ]; then
+	echo ""
+	echo "Applying overrides..."
+	echo ""
+	(cd overrides && cp -fpvR * ../iOS/ && cd ..)
+fi
+
 patches=patches/*.patch
 if [ -n "$patches" ]; then
+	echo ""
 	echo "Applying patches..."
 	echo ""
 	for p in $patches; do
