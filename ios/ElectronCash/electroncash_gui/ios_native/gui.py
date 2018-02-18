@@ -34,6 +34,9 @@ from datetime import datetime
 from . import heartbeat
 from . import utils
 from . import history
+from . import addresses
+from . import send
+from . import receive
 
 try:
     from .uikit_bindings import *
@@ -106,8 +109,14 @@ class ElectrumGui(PrintError):
         self.wallet = None
         self.window = None
         self.tabController = None
-        self.historyNavController = None
+        self.historyNav = None
         self.historyVC = None
+        self.sendVC = None
+        self.sendNav = None
+        self.receiveVC = None
+        self.receiveNav = None
+        self.addressesNav = None
+        self.addressesVC = None
         self.num_zeros = 3
         self.decimal_point = 5
         self.history = []
@@ -122,14 +131,26 @@ class ElectrumGui(PrintError):
         self.historyVC = tbl = history.HistoryTableVC.alloc().initWithStyle_(UITableViewStylePlain).autorelease()
         tbl.title = "History" # objc property
 
+        self.sendVC = snd = send.SendVC.alloc().init().autorelease()
+        snd.title = "Send"
+        
+        self.receiveVC = rcv = receive.ReceiveVC.alloc().init().autorelease()
+        rcv.title = "Receive"
+        
+        self.addressesVC = adr = addresses.AddressesTableVC.alloc().initWithStyle_(UITableViewStyleGrouped).autorelease()
+        adr.title = "Addresses"
+        
         self.historyNav = nav = UINavigationController.alloc().initWithRootViewController_(tbl).autorelease()
+        self.sendNav = nav2 = UINavigationController.alloc().initWithRootViewController_(snd).autorelease()
+        self.receiveNav = nav3 = UINavigationController.alloc().initWithRootViewController_(rcv).autorelease()
+        self.addressesNav = nav4 = UINavigationController.alloc().initWithRootViewController_(adr).autorelease()
 
-        tbl.refreshControl = UIRefreshControl.alloc().init().autorelease()
-
-        self.tabController.viewControllers = [nav]
+        self.tabController.viewControllers = [nav, nav2, nav3, nav4]
         tabitems = self.tabController.tabBar.items
-        if tabitems is not None and len(tabitems) > 0:
-            tabitems[0].image = utils.uiimage_get("tab_history.png").imageWithRenderingMode_(UIImageRenderingModeAlwaysOriginal)
+        tabitems[0].image = utils.uiimage_get("tab_history.png").imageWithRenderingMode_(UIImageRenderingModeAlwaysOriginal)
+        tabitems[1].image = utils.uiimage_get("tab_send.png").imageWithRenderingMode_(UIImageRenderingModeAlwaysOriginal)
+        tabitems[2].image = utils.uiimage_get("tab_receive.png").imageWithRenderingMode_(UIImageRenderingModeAlwaysOriginal)
+        tabitems[3].image = utils.uiimage_get("tab_addresses.png").imageWithRenderingMode_(UIImageRenderingModeAlwaysOriginal)
 
         self.window.rootViewController = self.tabController
 
@@ -149,8 +170,7 @@ class ElectrumGui(PrintError):
             print ("REGISTERED NETWORK CALLBACKS")
 
         tbl.refresh()
-        tbl.refreshControl.addTarget_action_forControlEvents_(tbl,SEL('needUpdate'), UIControlEventValueChanged)
-        tbl.showRefreshControl()
+        #tbl.showRefreshControl()
         
         self.helper = GuiHelper.alloc().init()
         
@@ -171,6 +191,12 @@ class ElectrumGui(PrintError):
         self.tabController.viewControllers = None
         self.historyNav = None
         self.historyVC = None
+        self.sendNav = None
+        self.sendVC = None
+        self.receiveVC = None
+        self.receiveNav = None
+        self.addressesNav = None
+        self.addressesVC = None
         self.window.rootViewController = None
         self.tabController = None
         self.window.release()
@@ -192,12 +218,12 @@ class ElectrumGui(PrintError):
                 pass
             
     def on_history(self, b):
-        print("------------ ON HISTORY ----------")
+        print("ON HISTORY (IsMainThread: %s)"%(str(NSThread.currentThread.isMainThread)))
         assert self.historyVC is not None
         self.historyVC.needUpdate()
             
     def on_network(self, event, *args):
-        print ("ON NETWORK: %s"%event)
+        print ("ON NETWORK: %s (IsMainThread: %s)"%(event,str(NSThread.currentThread.isMainThread)))
         assert self.historyVC is not None
         if event == 'updated':
             pass
@@ -260,7 +286,7 @@ class ElectrumGui(PrintError):
 
 
     # this method is called by Electron Cash libs to start the GUI
-    def main(self):
+    def main(self):       
         print("Test Decode result: %s"%check_imports())
         import hashlib
         print("HashLib algorithms available: " + str(hashlib.algorithms_available))

@@ -34,12 +34,14 @@ class TxDetail(UIViewController):
     def loadView(self) -> None:
         self.view = UIView.alloc().init().autorelease()
         lbl = UILabel.alloc().init().autorelease()
-        lbl.text = self.entry[1]
+        lbl.text = "Tx Detail: " + str(self.entry[1])
         lbl.adjustsFontSizeForWidth = True
-        rect = CGRectMake(0,30,320,200)
+        lbl.numberOfLines = 2
+        w = UIScreen.mainScreen.bounds.size.width
+        rect = CGRectMake(0,100,w,80)
         lbl.frame = rect
         iv = UIImageView.alloc().initWithImage_(self.entry[9]).autorelease()
-        rect = CGRectMake(0,260,320,200)
+        rect = CGRectMake(w/2-15,60,30,30)
         iv.frame = rect
         self.view.addSubview_(lbl)
         self.view.addSubview_(iv)
@@ -71,7 +73,10 @@ class HistoryTableVC(UITableViewController):
             img = utils.uiimage_get(icon)
             assert img is not None
             self.statusImages.addObject_(img)
-                
+        
+        self.refreshControl = UIRefreshControl.alloc().init().autorelease()
+        self.refreshControl.addTarget_action_forControlEvents_(self,SEL('needUpdate'), UIControlEventValueChanged)
+
         heartbeat.Add(self, 'doRefreshIfNeeded')
 
         return self
@@ -88,7 +93,7 @@ class HistoryTableVC(UITableViewController):
         return 1
 
     @objc_method
-    def tableView_numberOfRowsInSection_(self, tableView, section) -> int:
+    def tableView_numberOfRowsInSection_(self, tableView, section : int) -> int:
         try:
             parent = gui.ElectrumGui.gui
             return len(parent.history)
@@ -98,9 +103,10 @@ class HistoryTableVC(UITableViewController):
 
     @objc_method
     def tableView_cellForRowAtIndexPath_(self, tableView, indexPath):
-        cell = tableView.dequeueReusableCellWithIdentifier_("row")
+        identifier = "%s_%s"%(str(type(self)) , str(indexPath.section))
+        cell = tableView.dequeueReusableCellWithIdentifier_(identifier)
         if cell is None:
-            cell = UITableViewCell.alloc().initWithStyle_reuseIdentifier_(UITableViewCellStyleSubtitle, "row").autorelease()
+            cell = UITableViewCell.alloc().initWithStyle_reuseIdentifier_(UITableViewCellStyleSubtitle, identifier).autorelease()
         try:
             parent = gui.ElectrumGui.gui
             entry = parent.history[indexPath.row]

@@ -37,12 +37,12 @@ class HeartBeat(NSObject):
     def tick_(self, t):
         if not NSThread.isMainThread:
             print("WARNING: HeartBeat Timer Tick is not in the process's main thread! FIXME!")
-        time.sleep(0.020) # give other python "threads" a chance to run..
         en = self.funcs.objectEnumerator()
         inv = en.nextObject()
         while inv:
             inv.invoke()
             inv = en.nextObject()
+        time.sleep(0.001) # give other python "threads" a chance to run..
 
 
     @objc_method
@@ -67,7 +67,7 @@ class HeartBeat(NSObject):
     @objc_method
     def start(self):
         self.stop()
-        self.tickTimer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(0.001, self, SEL(b'tick:'), "tickTimer", True)
+        self.tickTimer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(0.030, self, SEL(b'tick:'), "tickTimer", True)
 
     @objc_method
     def stop(self):
