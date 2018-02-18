@@ -128,8 +128,8 @@ class HistoryTableVC(UITableViewController):
             pstyle.lineBreakMode = NSLineBreakByTruncatingTail
             title.addAttribute_value_range_(NSParagraphStyleAttributeName, pstyle, NSRange(0,title.length()))
             detail = utils.nsattributedstring_from_html(('<p align="justify" style="font-family:system font,arial,helvetica,verdana">'
-                                                        + 'Amt: <font face="courier,couerier new,fixed"><strong>%s</strong></font>'
-                                                        + ' - Bal: <font face="courier,courier new, fixed"><strong>%s</strong></font>'
+                                                        + 'Amt: <font face="monaco, menlo, courier"><strong>%s</strong></font>'
+                                                        + ' - Bal: <font face="monaco, menlo, courier"><strong>%s</strong></font>'
                                                         + ' - <font size=-1 color="#666666"><i>(%s)</i></font>'
                                                         + '</p>')
                                                         %(html.escape(v_str),html.escape(balance_str),html.escape(ff)))
