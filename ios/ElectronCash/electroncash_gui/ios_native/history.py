@@ -117,7 +117,8 @@ class HistoryTableVC(UITableViewController):
                 ff = "%s confirmations"%conf
             if label is None:
                 label = ''
-            label = "Test tx bla bla muaha this is a test" if indexPath.row % 2 < 1 else ''
+            if not len(label):
+                label = "Test tx bla bla muaha this is a test" if indexPath.row % 2 < 1 else ''
             title = utils.nsattributedstring_from_html(('<font face="system font,arial,helvetica,verdana" size=2>%s</font>'
                                                        + '<font face="system font,arial,helvetica,verdana" size=4>%s<font color="#996699"><b>%s</b></font></font>')
                                                        %(html.escape(status_str),

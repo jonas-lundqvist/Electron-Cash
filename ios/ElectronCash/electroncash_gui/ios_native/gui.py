@@ -122,6 +122,7 @@ class ElectrumGui(PrintError):
         self.history = []
         self.helper = None
         self.helperTimer = None
+        self.fx = self.daemon.fx # TODO: exchange rate crap
 
     def createAndShowUI(self):
         self.window = UIWindow.alloc().initWithFrame_(UIScreen.mainScreen.bounds)
@@ -229,8 +230,10 @@ class ElectrumGui(PrintError):
             pass
         elif event == 'new_transaction':
             self.historyVC.needUpdate() #enqueue update to main thread
+            self.addressesVC.needUpdate() #enqueue update to main thread
         elif event in ['status', 'banner', 'verified', 'fee']:
             self.historyVC.needUpdate() #enqueue update to main thread
+            self.addressesVC.needUpdate()
         else:
             self.print_error("unexpected network message:", event, args)
 

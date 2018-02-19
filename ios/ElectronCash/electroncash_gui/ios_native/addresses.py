@@ -3,6 +3,10 @@ from . import gui
 from . import heartbeat
 from electroncash import WalletStorage, Wallet
 from electroncash.util import timestamp_to_datetime
+import electroncash.exchange_rate
+from electroncash.i18n import _
+from electroncash.address import Address
+
 import time
 import html
 
@@ -53,7 +57,8 @@ class AddressesTableVC(UITableViewController):
                 
         self.refreshControl = UIRefreshControl.alloc().init().autorelease()
         self.refreshControl.addTarget_action_forControlEvents_(self,SEL('needUpdate'), UIControlEventValueChanged)
-
+        self.updateAddressesFromWallet()
+        
         heartbeat.Add(self, 'doRefreshIfNeeded')
 
         return self
@@ -66,35 +71,57 @@ class AddressesTableVC(UITableViewController):
 
     @objc_method
     def numberOfSectionsInTableView_(self, tableView) -> int:
-        return 3
+        parent = gui.ElectrumGui.gui
+        addrData = parent.addrData
+        return len(addrData.getSections())
     
     @objc_method
     def tableView_titleForHeaderInSection_(self, tv : ObjCInstance,section : int) -> ObjCInstance:
-        return {
-            0 : "Addresses With Funds",
-            1 : "Used, Emptied Addresses",
-            2 : "Unused Addresses"
-        }.get(section, 2)
-
+        try:
+            parent = gui.ElectrumGui.gui
+            addrData = parent.addrData
+            return addrData.getSections().get(section, '')
+        except Exception as e:
+            print("Error in addresses 1: %s"%str(e))
+            return '*Error*'
+            
     @objc_method
     def tableView_numberOfRowsInSection_(self, tableView : ObjCInstance, section : int) -> int:
         try:
             parent = gui.ElectrumGui.gui
-            return 4 if section < 2 else 16
-        except:
-            print("Error, no addresses")
+            addrData = parent.addrData
+            d = addrData.getListsBySection()
+            return len(d.get(section,[]))
+        except Exception as e:
+            print("Error in addresses 2: %s"%str(e))
             return 0
 
     @objc_method
     def tableView_cellForRowAtIndexPath_(self, tableView, indexPath):
+        #todo: - allow for label editing (popup menu?)
         identifier = "%s_%s"%(str(type(self)) , str(indexPath.section))
         cell = tableView.dequeueReusableCellWithIdentifier_(identifier)
         if cell is None:
             cell = UITableViewCell.alloc().initWithStyle_reuseIdentifier_(UITableViewCellStyleSubtitle, identifier).autorelease()
         try:
             parent = gui.ElectrumGui.gui
-            title = utils.nsattributedstring_from_html('<font face="system font,arial,helvetica,verdana"><b>A Title %s</b></font>'%str(indexPath.section*4+indexPath.row))
-            detail = utils.nsattributedstring_from_html('<font face="system font,arial,helvetica,verdana" color="#333344" size="-1">Some detail for %s</font>'%str(indexPath.section*4+indexPath.row))
+            addrData = parent.addrData
+            entries = addrData.getListsBySection().get(indexPath.section,[])
+            assert indexPath.row < len(entries)
+            entry = entries[indexPath.row]
+            for i,e in enumerate(entry):
+                if type(e) is str:
+                    entry[i] = html.escape(e)
+            # columns are: (address_text, addr_idx_text, label, balance_text, fiat_balance_text, num_tx_text, is_frozen_bool) 
+            address_text, addr_idx_text, label, balance_text, fiat_balance_text, num_tx_text, is_frozen_bool, *_ = entry
+            detailColorSpec = '#333344' if not is_frozen_bool else '#663344'
+            title = utils.nsattributedstring_from_html('<font face="system font,arial,helvetica,verdana"><b>%s</b></font>'
+                                                       % (address_text) )
+            detail = utils.nsattributedstring_from_html(('<font face="system font,arial,helvetica,verdana" color="%s" size="-1">'
+                                                         + 'bal: %s (%s) num: %s label: %s'
+                                                         + '</font>')
+                                                        % (detailColorSpec, balance_text, fiat_balance_text, num_tx_text, label) 
+                                                        )
             pstyle = NSMutableParagraphStyle.alloc().init().autorelease()
             pstyle.lineBreakMode = NSLineBreakByTruncatingTail
             title.addAttribute_value_range_(NSParagraphStyleAttributeName, pstyle, NSRange(0,title.length()))
@@ -139,6 +166,14 @@ class AddressesTableVC(UITableViewController):
     def updateAddressesFromWallet(self):
         parent = gui.ElectrumGui.gui
         wallet = parent.wallet
+        try:
+            #hack.. fixme
+            addrData = parent.addrData
+            if addrData is None:
+                raise AttributeError('dummy')
+        except AttributeError:
+            addrData = parent.addrData = AddressData(wallet, parent)
+        addrData.refresh()
 
 
     @objc_method
@@ -167,3 +202,90 @@ class AddressesTableVC(UITableViewController):
             # the below starts up the table view in the "refreshing" state..
             self.refreshControl.beginRefreshing()
             self.tableView.setContentOffset_animated_(CGPointMake(0, self.tableView.contentOffset.y-self.refreshControl.frame.size.height), True)
+
+
+class AddressData:
+    
+    def __init__(self, wallet, gui_parent):
+        self.parent = gui_parent
+        self.wallet = wallet
+        self.clear()
+        
+    def clear(self):
+        # columns are: (address_text, addr_idx_text, label, balance_text, fiat_balance_text, num_tx_text, is_frozen_bool) 
+        self.receiving = []
+        self.used = []
+        self.unspent = []
+        self.change = []
+        self.sections = {}
+        self.lists_by_section = {}
+        
+    def refresh(self):
+        self.clear()
+        receiving_addresses = self.wallet.get_receiving_addresses()
+        change_addresses = self.wallet.get_change_addresses()
+
+        if self.parent.fx and self.parent.fx.get_fiat_address_config():
+            fx = self.parent.fx
+        else:
+            fx = None
+        which_list = self.unspent
+        sequences = [0,1] if change_addresses else [0]
+        for is_change in sequences:
+            if len(sequences) > 1:
+                which_list = self.receiving if not is_change else self.change
+            else:
+                which_list = self.unspent
+            addr_list = change_addresses if is_change else receiving_addresses
+            for n, address in enumerate(addr_list):
+                num = len(self.wallet.get_address_history(address))
+                is_used = self.wallet.is_used(address)
+                balance = sum(self.wallet.get_addr_balance(address))
+                address_text = address.to_ui_string()
+                label = self.wallet.labels.get(address.to_storage_string(), '')
+                balance_text = self.parent.format_amount(balance, whitespaces=True)
+                is_frozen = self.wallet.is_frozen(address)
+                fiat_balance = fx.value_str(balance, fx.exchange_rate()) if fx else "0"
+                columns = [address_text, str(n), label, balance_text, fiat_balance, str(num), is_frozen, num, balance] # NB: num,balance needs to be last for sort below
+                if is_used:
+                    self.used.append(columns)
+                else:
+                    if balance <= 0.0 and len(sequences) < 2:
+                        self.receiving.append(columns)
+                    else:
+                        which_list.append(columns)
+        
+        self.used.sort(key=lambda x: [x[-1],x[-2]], reverse=True )
+        self.change.sort(key=lambda x: [x[-1],x[-2]], reverse=True )
+        self.unspent.sort(key=lambda x: [x[-1],x[-2]], reverse=True )
+        self.receiving.sort(key=lambda x: [x[-1],x[-2]], reverse=True )
+        
+                    
+    def getSections(self) -> dict:
+        if len(self.sections):
+            return self.sections
+        d = {}
+        if len(self.unspent):
+            d[len(d)] = _("Unspent")
+        d[len(d)] = _("Receiving")
+        if len(self.change):
+            d[len(d)] = _("Change")
+        if len(self.used):
+            d[len(d)] = _("Used")
+        self.sections = d
+        return d
+
+    def getListsBySection(self) -> dict:
+        if len(self.lists_by_section):
+            return self.lists_by_section
+        d = {}
+        if len(self.unspent):
+            d[len(d)] = self.unspent
+        d[len(d)] = self.receiving
+        if len(self.change):
+            d[len(d)] = self.change
+        if len(self.used):
+            d[len(d)] = self.used
+        self.lists_by_section = d
+        return d
+        
