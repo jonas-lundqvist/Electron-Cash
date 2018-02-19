@@ -120,7 +120,7 @@ class HistoryTableVC(UITableViewController):
             if not len(label):
                 label = "Test tx bla bla muaha this is a test" if indexPath.row % 2 < 1 else ''
             title = utils.nsattributedstring_from_html(('<font face="system font,arial,helvetica,verdana" size=2>%s</font>'
-                                                       + '<font face="system font,arial,helvetica,verdana" size=4>%s<font color="#996699"><b>%s</b></font></font>')
+                                                       + '<font face="system font,arial,helvetica,verdana" size=4>%s<font color="#336699"><b>%s</b></font></font>')
                                                        %(html.escape(status_str),
                                                          ' - ' if len(label)>0 else '',
                                                          ''+html.escape(label)+'' if len(label)>0 else ''
@@ -244,6 +244,7 @@ class HistoryTableVC(UITableViewController):
     def doRefreshIfNeeded(self):
         if self.needsRefresh:
             self.refresh()
+            #print ("HISTORY REFRESHED")
 
     @objc_method
     def showRefreshControl(self):

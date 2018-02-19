@@ -113,14 +113,17 @@ class AddressesTableVC(UITableViewController):
                 if type(e) is str:
                     entry[i] = html.escape(e)
             # columns are: (address_text, addr_idx_text, label, balance_text, fiat_balance_text, num_tx_text, is_frozen_bool) 
-            address_text, addr_idx_text, label, balance_text, fiat_balance_text, num_tx_text, is_frozen_bool, *_ = entry
-            detailColorSpec = '#333344' if not is_frozen_bool else '#663344'
-            title = utils.nsattributedstring_from_html('<font face="system font,arial,helvetica,verdana"><b>%s</b></font>'
-                                                       % (address_text) )
+            address_text, addr_idx_text, label, balance_text, fiat_balance_text, num_tx_text, is_frozen_bool, num, bal, *_ = entry
+            titleColorSpec = '#000000' if not is_frozen_bool else '#99333'
+            detailColorSpec = '#555566' if not is_frozen_bool else '#99333'
+            balColorSpec = 'color="#000000"' if bal > 0.0 else ''
+            fiat_html = (' (<font face="monaco, menlo, courier" %s>%s</font>) '%(balColorSpec,fiat_balance_text)) if addrData.show_fx else ''
+            title = utils.nsattributedstring_from_html('<font face="system font,arial,helvetica,verdana" color="%s"><b>%s</b></font>'
+                                                       % (titleColorSpec,address_text) )
             detail = utils.nsattributedstring_from_html(('<font face="system font,arial,helvetica,verdana" color="%s" size="-1">'
-                                                         + 'bal: %s (%s) num: %s label: %s'
+                                                         + 'bal: <font face="monaco, menlo, courier" % size=+1s>%s</font>%snumtx: %s label: <font color="#336699">%s</font>'
                                                          + '</font>')
-                                                        % (detailColorSpec, balance_text, fiat_balance_text, num_tx_text, label) 
+                                                        % (detailColorSpec, balColorSpec, balance_text, fiat_html, num_tx_text, label) 
                                                         )
             pstyle = NSMutableParagraphStyle.alloc().init().autorelease()
             pstyle.lineBreakMode = NSLineBreakByTruncatingTail
@@ -195,6 +198,8 @@ class AddressesTableVC(UITableViewController):
     def doRefreshIfNeeded(self):
         if self.needsRefresh:
             self.refresh()
+            #print ("ADDRESSES REFRESHED")
+
 
     @objc_method
     def showRefreshControl(self):
@@ -219,14 +224,16 @@ class AddressData:
         self.change = []
         self.sections = {}
         self.lists_by_section = {}
+        self.show_fx = False
         
     def refresh(self):
         self.clear()
         receiving_addresses = self.wallet.get_receiving_addresses()
         change_addresses = self.wallet.get_change_addresses()
 
-        if self.parent.fx and self.parent.fx.get_fiat_address_config():
-            fx = self.parent.fx
+        if self.parent.daemon.fx and self.parent.daemon.fx.get_fiat_address_config():
+            fx = self.parent.daemon.fx
+            self.show_fx = True
         else:
             fx = None
         which_list = self.unspent

@@ -88,9 +88,35 @@ def check_imports():
         return str(e)
 
 class GuiHelper(NSObject):
+    updateNeeded = objc_property()
+    
+    @objc_method
+    def init(self):
+        self = ObjCInstance(send_super(self, 'init'))
+        self.updateNeeded = False
+        heartbeat.Add(self, 'doUpdateIfNeeded')
+        return self
+    
+    @objc_method
+    def dealloc(self) -> None:
+        heartbeat.Remove(self, 'doUpdateIfNeeded')
+        self.updateNeeded = None
+        send_super(self, 'dealloc')
+    
     @objc_method
     def onTimer_(self, ignored):
         pass
+    
+    @objc_method
+    def doUpdateIfNeeded(self):
+        if self.updateNeeded:
+            if ElectrumGui.gui is not None:
+                Electrum.gui.on_status_update()
+                self.updateNeeded = False
+    
+    @objc_method
+    def needUpdate(self):
+        self.updateNeeded = True
 
 # Manages the GUI. Part of the ElectronCash API so you can't rename this class easily.
 class ElectrumGui(PrintError):
@@ -103,6 +129,7 @@ class ElectrumGui(PrintError):
         self.appDomain = 'com.c3-soft.ElectronCash'
         set_language(config.get('language'))
 
+        #todo: support multiple wallets in 1 UI?
         self.config = config
         self.daemon = daemon
         self.plugins = plugins
@@ -122,9 +149,10 @@ class ElectrumGui(PrintError):
         self.history = []
         self.helper = None
         self.helperTimer = None
-        self.fx = self.daemon.fx # TODO: exchange rate crap
 
     def createAndShowUI(self):
+        self.helper = GuiHelper.alloc().init()
+
         self.window = UIWindow.alloc().initWithFrame_(UIScreen.mainScreen.bounds)
         self.tabController = UITabBarController.alloc().init().autorelease()
 
@@ -160,7 +188,7 @@ class ElectrumGui(PrintError):
         # network callbacks
         if self.daemon.network:
             self.daemon.network.register_callback(self.on_history, ['on_history'])
-            #self.daemon.network_signal.connect(self.on_network1)
+            self.daemon.network.register_callback(self.on_quotes, ['on_quotes'])
             interests = ['updated', 'new_transaction', 'status',
                          'banner', 'verified', 'fee']
             # To avoid leaking references to "self" that prevent the
@@ -172,9 +200,7 @@ class ElectrumGui(PrintError):
 
         tbl.refresh()
         #tbl.showRefreshControl()
-        
-        self.helper = GuiHelper.alloc().init()
-        
+                
         print("UI Created Ok")
         
         return True
@@ -186,9 +212,6 @@ class ElectrumGui(PrintError):
         self.daemon.network.unregister_callback(self.on_network)
         if self.helperTimer is not None:
             self.helperTimer.invalidate()
-        self.helperTimer = None
-        self.helper.release()
-        self.helper = None
         self.tabController.viewControllers = None
         self.historyNav = None
         self.historyVC = None
@@ -202,7 +225,9 @@ class ElectrumGui(PrintError):
         self.tabController = None
         self.window.release()
         self.window = None
-        
+        self.helperTimer = None
+        self.helper.release()
+        self.helper = None        
     
     def on_rotated(self): # called by PythonAppDelegate after screen rotation
         pass
@@ -222,6 +247,11 @@ class ElectrumGui(PrintError):
         print("ON HISTORY (IsMainThread: %s)"%(str(NSThread.currentThread.isMainThread)))
         assert self.historyVC is not None
         self.historyVC.needUpdate()
+        
+    def on_quotes(self, event, *args):
+        print("ON QUOTES (IsMainThread: %s)"%(str(NSThread.currentThread.isMainThread)))        
+        self.historyVC.needUpdate()
+        self.addressesVC.needUpdate()
             
     def on_network(self, event, *args):
         print ("ON NETWORK: %s (IsMainThread: %s)"%(event,str(NSThread.currentThread.isMainThread)))
@@ -231,11 +261,23 @@ class ElectrumGui(PrintError):
         elif event == 'new_transaction':
             self.historyVC.needUpdate() #enqueue update to main thread
             self.addressesVC.needUpdate() #enqueue update to main thread
-        elif event in ['status', 'banner', 'verified', 'fee']:
+        elif event == 'banner':
+            #todo: handle console stuff here
+            pass
+        elif event == 'status':
+            #todo: handle status update here
+            self.helper.needUpdate()
+        elif event in ['verified']:
             self.historyVC.needUpdate() #enqueue update to main thread
             self.addressesVC.needUpdate()
+        elif event == 'fee':
+            # todo: handle fee stuff here
+            pass
         else:
             self.print_error("unexpected network message:", event, args)
+            
+    def on_status_update(self):
+        print ("ON STATUS UPDATE (IsMainThread: %s)"%(str(NSThread.currentThread.isMainThread)))
 
     @staticmethod
     def prompt_password(prmpt, dummy=0):
