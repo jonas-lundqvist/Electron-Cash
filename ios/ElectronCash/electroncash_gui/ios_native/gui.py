@@ -109,11 +109,10 @@ class GuiHelper(NSObject):
     
     @objc_method
     def doUpdateIfNeeded(self):
-        if self.updateNeeded:
-            if ElectrumGui.gui is not None:
-                Electrum.gui.on_status_update()
-                self.updateNeeded = False
-    
+        if self.updateNeeded and ElectrumGui.gui is not None:
+            ElectrumGui.gui.on_status_update()
+            self.updateNeeded = False
+
     @objc_method
     def needUpdate(self):
         self.updateNeeded = True
@@ -166,7 +165,7 @@ class ElectrumGui(PrintError):
         self.receiveVC = rcv = receive.ReceiveVC.alloc().init().autorelease()
         rcv.title = "Receive"
         
-        self.addressesVC = adr = addresses.AddressesTableVC.alloc().initWithStyle_(UITableViewStyleGrouped).autorelease()
+        self.addressesVC = adr = addresses.AddressesTableVC.alloc().initWithStyle_(UITableViewStylePlain).autorelease()
         adr.title = "Addresses"
         
         self.historyNav = nav = UINavigationController.alloc().initWithRootViewController_(tbl).autorelease()
