@@ -157,16 +157,12 @@ class ElectrumGui(PrintError):
 
         self.window.backgroundColor = UIColor.whiteColor
         self.historyVC = tbl = history.HistoryTableVC.alloc().initWithStyle_(UITableViewStylePlain).autorelease()
-        tbl.title = "History" # objc property
 
         self.sendVC = snd = send.SendVC.alloc().init().autorelease()
-        snd.title = "Send"
         
         self.receiveVC = rcv = receive.ReceiveVC.alloc().init().autorelease()
-        rcv.title = "Receive"
         
         self.addressesVC = adr = addresses.AddressesTableVC.alloc().initWithStyle_(UITableViewStylePlain).autorelease()
-        adr.title = "Addresses"
         
         self.historyNav = nav = UINavigationController.alloc().initWithRootViewController_(tbl).autorelease()
         self.sendNav = nav2 = UINavigationController.alloc().initWithRootViewController_(snd).autorelease()

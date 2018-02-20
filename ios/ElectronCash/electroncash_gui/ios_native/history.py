@@ -3,6 +3,7 @@ from . import gui
 from . import heartbeat
 from electroncash import WalletStorage, Wallet
 from electroncash.util import timestamp_to_datetime
+from electroncash.i18n import _, language
 import time
 import html
 
@@ -19,7 +20,7 @@ class TxDetail(UIViewController):
     def initWithEntry_(self, entry):
         self = ObjCInstance(send_super(self, 'init'))
         self.entry = entry
-        self.title = "Transaction Details"
+        self.title = _("Transaction") + " " + _("Details")
         return self
     
     @objc_method
@@ -34,13 +35,13 @@ class TxDetail(UIViewController):
     def loadView(self) -> None:
         self.view = UIView.alloc().init().autorelease()
         lbl = UILabel.alloc().init().autorelease()
-        lbl.text = "Tx Detail: " + str(self.entry[1])
+        lbl.text = _("Tx Detail: ") + str(self.entry[1])
         lbl.adjustsFontSizeForWidth = True
         lbl.numberOfLines = 2
         w = UIScreen.mainScreen.bounds.size.width
         rect = CGRectMake(0,100,w,80)
         lbl.frame = rect
-        iv = UIImageView.alloc().initWithImage_(self.entry[9]).autorelease()
+        iv = UIImageView.alloc().initWithImage_(self.entry[-1]).autorelease()
         rect = CGRectMake(w/2-15,60,30,30)
         iv.frame = rect
         self.view.addSubview_(lbl)
@@ -55,6 +56,7 @@ class HistoryTableVC(UITableViewController):
     def initWithStyle_(self, style : int):
         self = ObjCInstance(send_super(self, 'initWithStyle:', style, argtypes=[c_int]))
         self.needsRefresh = False
+        self.title = _("History")
         # setup the status icons array.. cache the images basically
         tx_icons = [
             "warning.png",
@@ -110,30 +112,31 @@ class HistoryTableVC(UITableViewController):
         try:
             parent = gui.ElectrumGui.gui
             entry = parent.history[indexPath.row]
-            _, tx_hash, status_str, label, v_str, balance_str, date, conf, status, *_ = entry
+            _, tx_hash, status_str, label, v_str, balance_str, date, conf, status, val, *_ = entry
 
             ff = str(date)
             if conf > 0:
-                ff = "%s confirmations"%conf
+                ff = "%s %s"%(conf, language.gettext('confirmations'))
             if label is None:
                 label = ''
-            if not len(label):
-                label = "Test tx bla bla muaha this is a test" if indexPath.row % 2 < 1 else ''
+            lblColor = "#000000" if val >= 0 else "#993333"
+            lblSep = ' - ' if len(label) else ''
             title = utils.nsattributedstring_from_html(('<font face="system font,arial,helvetica,verdana" size=2>%s</font>'
-                                                       + '<font face="system font,arial,helvetica,verdana" size=4>%s<font color="#336699"><b>%s</b></font></font>')
+                                                       + '<font face="system font,arial,helvetica,verdana" size=4>%s<font color="%s"><b>%s</b></font></font>')
                                                        %(html.escape(status_str),
-                                                         ' - ' if len(label)>0 else '',
+                                                         lblSep,
+                                                         lblColor,
                                                          ''+html.escape(label)+'' if len(label)>0 else ''
                                                          ))
             pstyle = NSMutableParagraphStyle.alloc().init().autorelease()
             pstyle.lineBreakMode = NSLineBreakByTruncatingTail
             title.addAttribute_value_range_(NSParagraphStyleAttributeName, pstyle, NSRange(0,title.length()))
             detail = utils.nsattributedstring_from_html(('<p align="justify" style="font-family:system font,arial,helvetica,verdana">'
-                                                        + 'Amt: <font face="monaco, menlo, courier"><strong>%s</strong></font>'
+                                                        + 'Amt: <font face="monaco, menlo, courier" color="%s"><strong>%s</strong></font>'
                                                         + ' - Bal: <font face="monaco, menlo, courier"><strong>%s</strong></font>'
                                                         + ' - <font size=-1 color="#666666"><i>(%s)</i></font>'
                                                         + '</p>')
-                                                        %(html.escape(v_str),html.escape(balance_str),html.escape(ff)))
+                                                        %(lblColor,html.escape(v_str),html.escape(balance_str),html.escape(ff)))
             detail.addAttribute_value_range_(NSParagraphStyleAttributeName, pstyle, NSRange(0,detail.length()))
             if status >= 0 and status < len(self.statusImages):
                 cell.imageView.image = self.statusImages[status]
@@ -196,7 +199,7 @@ class HistoryTableVC(UITableViewController):
             balance_str = parent.format_amount(balance, whitespaces=True)
             label = wallet.get_label(tx_hash)
             date = timestamp_to_datetime(time.time() if conf <= 0 else timestamp)
-            entry = ('', tx_hash, status_str, label, v_str, balance_str, date, conf, status)
+            entry = ('', tx_hash, status_str, label, v_str, balance_str, date, conf, status, value)
             parent.history.insert(0,entry) # reverse order
             #if fx and fx.show_history():
             #    date = timestamp_to_datetime(time.time() if conf <= 0 else timestamp)

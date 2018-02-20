@@ -3,6 +3,7 @@ from . import gui
 from . import heartbeat
 from electroncash import WalletStorage, Wallet
 from electroncash.util import timestamp_to_datetime
+from electroncash.i18n import _
 import time
 import html
 
@@ -19,7 +20,7 @@ class SendVC(UIViewController):
     def init(self):
         self = ObjCInstance(send_super(self, 'init'))
         self.stuff = []
-        self.title = "Send"
+        self.title = _("Send")
         return self
     
     @objc_method

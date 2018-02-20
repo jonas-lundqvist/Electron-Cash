@@ -4,7 +4,7 @@ from . import heartbeat
 from electroncash import WalletStorage, Wallet
 from electroncash.util import timestamp_to_datetime
 import electroncash.exchange_rate
-from electroncash.i18n import _
+from electroncash.i18n import _, language
 from electroncash.address import Address
 
 import time
@@ -54,6 +54,7 @@ class AddressesTableVC(UITableViewController):
     def initWithStyle_(self, style : int):
         self = ObjCInstance(send_super(self, 'initWithStyle:', style, argtypes=[c_int]))
         self.needsRefresh = False
+        self.title = _("Addresses")
                 
         self.refreshControl = UIRefreshControl.alloc().init().autorelease()
         self.refreshControl.addTarget_action_forControlEvents_(self,SEL('needUpdate'), UIControlEventValueChanged)
@@ -116,14 +117,15 @@ class AddressesTableVC(UITableViewController):
             address_text, addr_idx_text, label, balance_text, fiat_balance_text, num_tx_text, is_frozen_bool, num, bal, *_ = entry
             titleColorSpec = '#000000' if not is_frozen_bool else '#99333'
             detailColorSpec = '#555566' if not is_frozen_bool else '#99333'
+            labelColorSpec = '#000000' if not is_frozen_bool else '#993333'
             balColorSpec = 'color="#000000"' if bal > 0.0 else ''
             fiat_html = (' (<font face="monaco, menlo, courier" %s>%s</font>) '%(balColorSpec,fiat_balance_text)) if addrData.show_fx else ''
             title = utils.nsattributedstring_from_html('<font face="system font,arial,helvetica,verdana" color="%s"><b>%s</b></font>'
                                                        % (titleColorSpec,address_text) )
             detail = utils.nsattributedstring_from_html(('<font face="system font,arial,helvetica,verdana" color="%s" size="-1">'
-                                                         + 'bal: <font face="monaco, menlo, courier" % size=+1s>%s</font>%snumtx: %s label: <font color="#336699">%s</font>'
+                                                         + 'bal: <font face="monaco, menlo, courier" % size=+1s>%s</font>%snumtx: %s label: <font color="%s">%s</font>'
                                                          + '</font>')
-                                                        % (detailColorSpec, balColorSpec, balance_text, fiat_html, num_tx_text, label) 
+                                                        % (detailColorSpec, balColorSpec, balance_text, fiat_html, num_tx_text, labelColorSpec, label) 
                                                         )
             pstyle = NSMutableParagraphStyle.alloc().init().autorelease()
             pstyle.lineBreakMode = NSLineBreakByTruncatingTail
