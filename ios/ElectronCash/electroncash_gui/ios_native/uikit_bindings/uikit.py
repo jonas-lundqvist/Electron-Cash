@@ -4,8 +4,6 @@ from enum import Enum
 
 from rubicon.objc import *
 
-#from toga.constants import *
-
 ######################################################################
 
 # UIKit
@@ -219,6 +217,15 @@ UINavigationController = ObjCClass('UINavigationController')
 # UIButton.h
 UIButton = ObjCClass('UIButton')
 
+UIButtonTypeCustom = 0 #                         // no button type
+UIButtonTypeSystem = 1# NS_ENUM_AVAILABLE_IOS(7_0),  // standard system button
+UIButtonTypeDetailDisclosure = 2
+UIButtonTypeInfoLight = 3
+UIButtonTypeInfoDark = 4
+UIButtonTypeContactAdd = 5
+UIButtonTypeRoundedRect = UIButtonTypeSystem #   // Deprecated, use UIButtonTypeSystem instead
+
+
 # UIBarButtonItem.h
 UIBarButtonItem = ObjCClass('UIBarButtonItem')
 
@@ -300,6 +307,12 @@ UITextBorderStyleLine = 1
 UITextBorderStyleBezel = 2
 UITextBorderStyleRoundedRect = 3
 
+# UITextFieldViewMode
+UITextFieldViewModeNever = 0
+UITextFieldViewModeWhileEditing = 1
+UITextFieldViewModeUnlessEditing = 2
+UITextFieldViewModeAlways = 3
+
 # UIWebView.h
 UIWebView = ObjCClass('UIWebView')
 
@@ -338,3 +351,95 @@ NSObliquenessAttributeName = 'NSObliqueness'
 NSExpansionAttributeName = 'NSExpansion'
 NSWritingDirectionAttributeName = 'NSWritingDirection'
 NSVerticalGlyphFormAttributeName = 'CTVerticalForms'
+
+# UIStackView.h stuff
+UIStackView = ObjCClass('UIStackView')
+# UIStackViewDistribution
+#
+#     When items do not fit (overflow) or fill (underflow) the space available
+#     adjustments occur according to compressionResistance or hugging
+#     priorities of items, or when that is ambiguous, according to arrangement
+#     order.
+UIStackViewDistributionFill = 0
+#     Items are all the same size.
+#     When space allows, this will be the size of the item with the largest
+#     intrinsicContentSize (along the axis of the stack).
+#     Overflow or underflow adjustments are distributed equally among the items.
+#   
+#     Overflow or underflow adjustments are distributed among the items proportional
+#     to their intrinsicContentSizes.
+UIStackViewDistributionFillEqually = 1
+#     Overflow or underflow adjustments are distributed among the items proportional to their intrinsicContentSizes.
+UIStackViewDistributionFillProportionally = 2
+#     Additional underflow spacing is divided equally in the spaces between the items.
+#     Overflow squeezing is controlled by compressionResistance priorities followed by
+#     arrangement order.
+UIStackViewDistributionEqualSpacing = 3
+#     Equal center-to-center spacing of the items is maintained as much
+#     as possible while still maintaining a minimum edge-to-edge spacing within the
+#     allowed area.
+#        Additional underflow spacing is divided equally in the spacing. Overflow 
+#     squeezing is distributed first according to compressionResistance priorities 
+#     of items, then according to subview order while maintaining the configured 
+#     (edge-to-edge) spacing as a minimum.
+UIStackViewDistributionEqualCentering = 4
+# UIStackViewAlignment
+#    /* Align the leading and trailing edges of vertically stacked items
+#     or the top and bottom edges of horizontally stacked items tightly to the container.
+#     */
+UIStackViewAlignmentFill = 0    
+#    /* Align the leading edges of vertically stacked items
+#     or the top edges of horizontally stacked items tightly to the relevant edge
+#     of the container
+#     */
+UIStackViewAlignmentLeading = 1
+UIStackViewAlignmentTop = UIStackViewAlignmentLeading
+UIStackViewAlignmentFirstBaseline = 2 # Valid for horizontal axis only    
+#    /* Center the items in a vertical stack horizontally
+#     or the items in a horizontal stack vertically
+#     */
+UIStackViewAlignmentCenter = 3
+#    /* Align the trailing edges of vertically stacked items
+#     or the bottom edges of horizontally stacked items tightly to the relevant
+#     edge of the container
+#     */
+UIStackViewAlignmentTrailing = 4
+UIStackViewAlignmentBottom = UIStackViewAlignmentTrailing
+UIStackViewAlignmentLastBaseline = 5 # Valid for horizontal axis only
+# For UIStackView.axis (UILayooutConstraintAxis)
+UILayoutConstraintAxisHorizontal = 0
+UILayoutConstraintAxisVertical = 1
+
+# A required constraint.
+UILayoutPriorityRequired = 1000
+# The priority level with which a button resists compressing its content.
+UILayoutPriorityDefaultHigh = 750
+# The priority level at which a button hugs its contents horizontally.
+UILayoutPriorityDefaultLow = 250
+# The priority level with which the view wants to conform to the target size in that computation.
+UILayoutPriorityFittingSizeLevel = 50
+
+# AutoResizing Mask
+UIViewAutoresizingNone                 = 0
+UIViewAutoresizingFlexibleLeftMargin   = 1 << 0
+UIViewAutoresizingFlexibleWidth        = 1 << 1
+UIViewAutoresizingFlexibleRightMargin  = 1 << 2
+UIViewAutoresizingFlexibleTopMargin    = 1 << 3
+UIViewAutoresizingFlexibleHeight       = 1 << 4
+UIViewAutoresizingFlexibleBottomMargin = 1 << 5
+
+UIViewContentModeScaleToFill = 0
+UIViewContentModeScaleAspectFit = 1 #      // contents scaled to fit with fixed aspect. remainder is transparent
+UIViewContentModeScaleAspectFill = 2 #     // contents scaled to fill with fixed aspect. some portion of content may be clipped.
+UIViewContentModeRedraw = 3 #              // redraw on bounds change (calls -setNeedsDisplay)
+UIViewContentModeCenter = 4 #              // contents remain same size. positioned adjusted.
+UIViewContentModeTop = 5
+UIViewContentModeBottom = 6
+UIViewContentModeLeft = 7
+UIViewContentModeRight = 8
+UIViewContentModeTopLeft = 9
+UIViewContentModeTopRight = 10
+UIViewContentModeBottomLeft = 11
+UIViewContentModeBottomRight = 12
+
+UIScrollView = ObjCClass('UIScrollView')

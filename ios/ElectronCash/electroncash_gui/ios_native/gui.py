@@ -145,6 +145,7 @@ class ElectrumGui(PrintError):
         self.addressesVC = None
         self.num_zeros = 3
         self.decimal_point = 5
+        self.fee_unit = 0
         self.history = []
         self.helper = None
         self.helperTimer = None
@@ -323,6 +324,27 @@ class ElectrumGui(PrintError):
     
     def format_amount(self, x, is_diff=False, whitespaces=False):
         return format_satoshis(x, is_diff, self.num_zeros, self.decimal_point, whitespaces)
+
+    def format_fee_rate(self, fee_rate):
+        if self.fee_unit == 0:
+            return '{:.2f} sats/byte'.format(fee_rate/1000)
+        else:
+            return self.format_amount(fee_rate) + ' ' + self.base_unit() + '/kB'
+
+    def base_unit(self):
+        assert self.decimal_point in [2, 5, 8]
+        if self.decimal_point == 2:
+            return 'bits'
+        if self.decimal_point == 5:
+            return 'mBCH'
+        if self.decimal_point == 8:
+            return 'BCH'
+        raise Exception('Unknown base unit')
+    
+    def on_label_edited(self, key, newvalue):
+        self.wallet.set_label(key, newvalue)
+        self.historyVC.needUpdate()
+        self.addressesVC.needUpdate()
 
 
     # this method is called by Electron Cash libs to start the GUI

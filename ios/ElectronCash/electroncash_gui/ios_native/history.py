@@ -1,6 +1,7 @@
 from . import utils
 from . import gui
 from . import heartbeat
+from . import customviews
 from electroncash import WalletStorage, Wallet
 from electroncash.util import timestamp_to_datetime
 from electroncash.i18n import _, language
@@ -13,7 +14,7 @@ except Exception as e:
     sys.exit("Error: Could not import iOS libs: %s"%str(e))
 
 class TxDetail(UIViewController):
-    # entry = ('', tx_hash, status_str, label, v_str, balance_str, date_str, conf, status, status_uiimage)
+    # entry = ('', tx_hash, status_str, label, v_str, balance_str, date_str, conf, status, val, status_uiimage)
     entry = objc_property() # an NSArray of basically the history entry
 
     @objc_method
@@ -25,7 +26,7 @@ class TxDetail(UIViewController):
     
     @objc_method
     def dealloc(self) -> None:
-        #print("TxDetail dealloc")
+        print("TxDetail dealloc")
         self.entry = None
         self.title = None
         self.view = None
@@ -33,19 +34,28 @@ class TxDetail(UIViewController):
     
     @objc_method
     def loadView(self) -> None:
-        self.view = UIView.alloc().init().autorelease()
-        lbl = UILabel.alloc().init().autorelease()
-        lbl.text = _("Tx Detail: ") + str(self.entry[1])
-        lbl.adjustsFontSizeForWidth = True
-        lbl.numberOfLines = 2
-        w = UIScreen.mainScreen.bounds.size.width
-        rect = CGRectMake(0,100,w,80)
-        lbl.frame = rect
-        iv = UIImageView.alloc().initWithImage_(self.entry[-1]).autorelease()
-        rect = CGRectMake(w/2-15,60,30,30)
-        iv.frame = rect
-        self.view.addSubview_(lbl)
-        self.view.addSubview_(iv)
+        self.view, butCopy, butQR, descrTF = customviews.create_transaction_detail_view(self.entry)
+        butCopy.addTarget_action_forControlEvents_(self, SEL(b'onCopyBut:'), UIControlEventTouchUpInside)
+        butQR.addTarget_action_forControlEvents_(self, SEL(b'onQRBut:'), UIControlEventTouchUpInside)
+        if descrTF is not None:
+            descrTF.delegate = self
+
+    @objc_method
+    def textFieldShouldReturn_(self, tf) -> bool:
+        #print("hit return, value is {}".format(tf.text))
+        tx_hash = self.entry[1]
+        new_label = tf.text
+        gui.ElectrumGui.gui.on_label_edited(tx_hash, new_label)
+        tf.resignFirstResponder()
+        return True
+
+    @objc_method
+    def onCopyBut_(self, but) -> None:
+        print("Copy button pressed")
+
+    @objc_method
+    def onQRBut_(self, but) -> None:
+        print("QR button pressed")
  
 # History Tab -- shows tx's, etc
 class HistoryTableVC(UITableViewController):
