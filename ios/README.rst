@@ -14,20 +14,20 @@ Quick Start Instructions
    * MacOS 10.11 or above is required with Xcode installed
    * MacPorts is required (Brew may work too but is untested)
    * Python 3.5 must be installed via MacPorts/Brew
-   * cookiecutter, briefcase, pbxproj, and setuptools python packages must be installed
+   * cookiecutter, briefcase, pbxproj, and setuptools python packages must be installed::
    
-       sudo python3 -m pip install setuptools 
-       sudo python3 -m pip install cookiecutter 
-       sudo python3 -m pip install briefcase 
-       sudo python3 -m pip install pbxproj
+           sudo python3 -m pip install setuptools
+           sudo python3 -m pip install cookiecutter
+           sudo python3 -m pip install briefcase
+           sudo python3 -m pip install pbxproj
 
-2. Generate the iOS project using the included shell script:
+2. Generate the iOS project using the included shell script::
 
-       ./make_ios_project.sh
+           ./make_ios_project.sh
        
-3. Use Xcode to open the generated project.  You may edit the python files in the Xcode project and build the app, etc.  Note that the python files in the app are copies of the files in the sourcecode repository. If you plan on committing changes back to the repository, use the included script to copy back changes.
+3. Use Xcode to open the generated project.  You may edit the python files in the Xcode project and build the app, etc.  Note that the python files in the app are copies of the files in the sourcecode repository. If you plan on committing changes back to the repository, use the included script to copy back changes::
 
-       ./copy_back_changes.sh
+           ./copy_back_changes.sh
        
 Additional Notes
 ----------------
