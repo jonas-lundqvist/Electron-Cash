@@ -61,7 +61,8 @@ if [ "$?" != 0 ]; then
 	exit 4
 fi
 
-cd iOS && ln -s . Support && cd .. # Fixup for broken Briefcase template.. :/
+# No longer needed: they fixed the bug.  But leaving it here in case bug comes back!
+#cd iOS && ln -s . Support ; cd .. # Fixup for broken Briefcase template.. :/
 
 infoplist="iOS/ElectronCash/ElectronCash-Info.plist"
 if [ -f "${infoplist}" ]; then
