@@ -5,14 +5,20 @@ if [ ! -d iOS ]; then
     exit 1
 fi
 
-pushd . > /dev/null
 projdir="iOS/app"
+projdir_top="iOS/"
+
+pushd . > /dev/null
 cd $projdir
 
-a=ElectronCash/*.py
+a=`find ElectronCash/ -type f -depth 1 -name \*.py -print`
 b=`find ElectronCash/electroncash_gui -type f -name \*.py -print`
-b_imgs=`find ElectronCash/electroncash_gui -type f -name \*.png -print`
 c=`find ElectronCash/electroncash -type f -name \*.py -print`
+popd > /dev/null
+
+pushd . > /dev/null
+cd $projdir_top
+res=`find Resources -type f -print`
 popd > /dev/null
 
 allYes=0
@@ -24,7 +30,7 @@ function doIt() {
     f2=$2
     dstInfo=$3
 
-    if diff -q $f1 $f2 > /dev/null 2>&1; then
+    if [ -e "$f1" ] && diff -q $f1 $f2 > /dev/null 2>&1; then
         true
     else
         while true; do
@@ -56,7 +62,7 @@ function doIt() {
     fi
 }
 
-for file in $a $b $b_imgs; do
+for file in $a $b; do
     f1="${file}"
     f2="${projdir}/${file}"
     doIt "$f1" "$f2" "ElectronCash/"
@@ -69,6 +75,11 @@ for f in $c; do
     doIt "$f1" "$f2" "../lib/"
 done
 
+for file in $res; do
+    f1="${file}"
+    f2="${projdir_top}/${file}"
+    doIt "$f1" "$f2" "Resources/"
+done
 
 echo ""
 

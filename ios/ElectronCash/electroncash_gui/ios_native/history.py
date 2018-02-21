@@ -82,7 +82,7 @@ class HistoryTableVC(UITableViewController):
         ]
         self.statusImages = NSMutableArray.arrayWithCapacity_(len(tx_icons))
         for icon in tx_icons:
-            img = utils.uiimage_get(icon)
+            img = UIImage.imageNamed_(icon)
             assert img is not None
             self.statusImages.addObject_(img)
         

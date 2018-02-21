@@ -6,16 +6,28 @@ if [ "$?" != "0" ]; then
 	exit 1
 fi
 
-/usr/bin/env pip3 show briefcase > /dev/null
+/usr/bin/env python3 -m pip show setuptools > /dev/null
 if [ "$?" != "0" ]; then
-	echo "ERROR: Please install briefcase like so: pip3 install briefcase"
+	echo "ERROR: Please install setupdools like so: sudo python3 -m pip install briefcase"
 	exit 2
 fi
 
-/usr/bin/env pip3 show cookiecutter > /dev/null
+/usr/bin/env python3 -m pip show briefcase > /dev/null
 if [ "$?" != "0" ]; then
-	echo "ERROR: Please install cookiecutter like so: pip3 install cookiecutter"
+	echo "ERROR: Please install briefcase like so: sudo python3 -m pip install briefcase"
 	exit 3
+fi
+
+/usr/bin/env python3 -m pip show cookiecutter > /dev/null
+if [ "$?" != "0" ]; then
+	echo "ERROR: Please install cookiecutter like so: sudo python3 -m pip install cookiecutter"
+	exit 4
+fi
+
+/usr/bin/env python3 -m pip show pbxproj > /dev/null
+if [ "$?" != "0" ]; then
+	echo "ERROR: Please install pbxproj like so: sudo python3 -m pip install pbxproj"
+	exit 5
 fi
 
 if [ -d iOS ]; then
@@ -87,6 +99,31 @@ if [ -n "$patches" ]; then
 	for p in $patches; do
 		patch -p 1 < $p
 	done
+fi
+
+xcode_file="Electron-Cash.xcodeproj/project.pbxproj" 
+echo ""
+echo "Mogrifying Xcode .pbxproj file to use iOS 9.0 deployment target..."
+echo ""
+sed  -E -i original 's/(.*)IPHONEOS_DEPLOYMENT_TARGET = [0-9.]+(.*)/\1IPHONEOS_DEPLOYMENT_TARGET = 9.0\2/g' "iOS/${xcode_file}"
+if [ "$?" != 0 ]; then
+	echo "Error modifying Xcode project file iOS/$xcode_file... aborting."
+	exit 1
+else
+	echo ".pbxproj mogrifid ok."
+fi
+
+resources=Resources/*
+if [ -n "$resources" ]; then
+	echo ""
+	echo "Adding Resurces/ to project..."
+	echo ""
+	cp -fRav Resources iOS/
+	(cd iOS && python3 -m pbxproj folder "${xcode_file}" Resources)
+	if [ "$?" != 0 ]; then
+		echo "Error adding resources to iOS/$xcode_file... aborting."
+		exit 1
+	fi
 fi
 
 echo ''

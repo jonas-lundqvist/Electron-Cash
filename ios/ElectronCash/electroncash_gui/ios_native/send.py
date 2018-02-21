@@ -31,12 +31,10 @@ class SendVC(UIViewController):
     
     @objc_method
     def loadView(self) -> None:
-        self.view = UIView.alloc().init().autorelease()
-        lbl = UILabel.alloc().init().autorelease()
-        lbl.text = "Send UI will go here"
-        lbl.adjustsFontSizeForWidth = True
-        lbl.numberOfLines = 2
-        w = UIScreen.mainScreen.bounds.size.width
-        rect = CGRectMake(10,100,w,80)
-        lbl.frame = rect
-        self.view.addSubview_(lbl)
+        objs = NSBundle.mainBundle.loadNibNamed_owner_options_("Send",self,None)
+        assert objs is not None and len(objs)
+        self.view = objs[0]
+        lbl = self.view.viewWithTag_(1337)
+
+        if lbl is not None:
+            lbl.text = "Found 1337!"

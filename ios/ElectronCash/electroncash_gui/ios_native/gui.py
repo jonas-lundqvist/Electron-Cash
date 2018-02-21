@@ -192,10 +192,10 @@ class ElectrumGui(PrintError):
 
         self.tabController.viewControllers = [nav, nav2, nav3, nav4]
         tabitems = self.tabController.tabBar.items
-        tabitems[0].image = utils.uiimage_get("tab_history.png").imageWithRenderingMode_(UIImageRenderingModeAlwaysOriginal)
-        tabitems[1].image = utils.uiimage_get("tab_send.png").imageWithRenderingMode_(UIImageRenderingModeAlwaysOriginal)
-        tabitems[2].image = utils.uiimage_get("tab_receive.png").imageWithRenderingMode_(UIImageRenderingModeAlwaysOriginal)
-        tabitems[3].image = utils.uiimage_get("tab_addresses.png").imageWithRenderingMode_(UIImageRenderingModeAlwaysOriginal)
+        tabitems[0].image = UIImage.imageNamed_("tab_history.png").imageWithRenderingMode_(UIImageRenderingModeAlwaysOriginal)
+        tabitems[1].image = UIImage.imageNamed_("tab_send.png").imageWithRenderingMode_(UIImageRenderingModeAlwaysOriginal)
+        tabitems[2].image = UIImage.imageNamed_("tab_receive.png").imageWithRenderingMode_(UIImageRenderingModeAlwaysOriginal)
+        tabitems[3].image = UIImage.imageNamed_("tab_addresses.png").imageWithRenderingMode_(UIImageRenderingModeAlwaysOriginal)
 
         self.window.rootViewController = self.tabController
 

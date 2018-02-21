@@ -14,9 +14,12 @@ Quick Start Instructions
    * MacOS 10.11 or above is required with Xcode installed
    * MacPorts is required (Brew may work too but is untested)
    * Python 3.5 must be installed via MacPorts/Brew
-   * cookiecutter, briefcase, and setuptools python packages must be installed
+   * cookiecutter, briefcase, pbxproj, and setuptools python packages must be installed
    
-       pip3 install setuptools; pip3 install cookiecutter; pip3 install briefcase
+       sudo python3 -m pip install setuptools 
+       sudo python3 -m pip install cookiecutter 
+       sudo python3 -m pip install briefcase 
+       sudo python3 -m pip install pbxproj
 
 2. Generate the iOS project using the included shell script:
 

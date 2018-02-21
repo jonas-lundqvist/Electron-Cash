@@ -33,7 +33,6 @@ except Exception as e:
 bundle_identifier = NSBundle.mainBundle.bundleIdentifier
 bundle_domain = '.'.join(bundle_identifier.split('.')[0:-1])
 bundle_short_name = bundle_domain + ".ElectronCash"
-imgs_subdir = "Library/Application Support/" + bundle_short_name + "/app/ElectronCash/electroncash_gui/ios_native/imgs"
 
 def is_2x_screen() -> bool:
     return True if UIScreen.mainScreen.scale > 1.0 else False
@@ -55,22 +54,6 @@ def get_bundle_resource_path(fileName: str, directory: str = None) -> str:
     if directory is None:
         return NSBundle.mainBundle.pathForResource_ofType_(fn, ext)
     return NSBundle.mainBundle.pathForResource_ofType_inDirectory_(fn, ext, directory)
-
-def get_bundle_image_path(fileName: str) -> str:
-    return get_bundle_resource_path(fileName, imgs_subdir)
-
-def uiimage_get(fileName: str) -> ObjCInstance:
-    fn, ext = get_fn_and_ext(fileName)
-    img = UIImage.imageNamed_(fn) # try and get the 'cached' image from resources folder -- faster
-    if img is not None:
-        return img
-    if is_2x_screen() and not fn.endswith('@2x'):
-        fileName2x = fn + '@2x' + '.' + ext
-        f=get_bundle_image_path(fileName2x)
-        if f is not None:
-            return UIImage.alloc().initWithContentsOfFile_(f).autorelease()
-    f=get_bundle_image_path(fileName)
-    return UIImage.alloc().initWithContentsOfFile_(f).autorelease()
 
 def nsattributedstring_from_html(html : str) -> ObjCInstance:
     data = ns_from_py(html.encode('utf-8'))

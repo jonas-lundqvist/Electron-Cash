@@ -40,7 +40,7 @@ def create_transaction_detail_view(entry) -> (ObjCInstance, ObjCInstance, ObjCIn
     viewsH1.append(v)
     v = UIButton.buttonWithType_(UIButtonTypeCustom)
     but1 = v
-    v.setImage_forState_(utils.uiimage_get("copy.png"), UIControlStateNormal)
+    v.setImage_forState_(UIImage.imageNamed_("copy.png"), UIControlStateNormal)
     v.setContentHuggingPriority_forAxis_(UILayoutPriorityDefaultHigh, UILayoutConstraintAxisHorizontal)
     v.setContentHuggingPriority_forAxis_(UILayoutPriorityDefaultHigh, UILayoutConstraintAxisVertical)
     v.setContentCompressionResistancePriority_forAxis_(UILayoutPriorityDefaultLow-1, UILayoutConstraintAxisVertical)
@@ -48,7 +48,7 @@ def create_transaction_detail_view(entry) -> (ObjCInstance, ObjCInstance, ObjCIn
     viewsH1.append(v)
     v = UIButton.buttonWithType_(UIButtonTypeCustom)
     but2 = v
-    v.setImage_forState_(utils.uiimage_get("qrcode.png"), UIControlStateNormal)
+    v.setImage_forState_(UIImage.imageNamed_("qrcode.png"), UIControlStateNormal)
     v.setContentHuggingPriority_forAxis_(UILayoutPriorityDefaultHigh, UILayoutConstraintAxisHorizontal)
     v.setContentHuggingPriority_forAxis_(UILayoutPriorityDefaultHigh, UILayoutConstraintAxisVertical)
     v.setContentCompressionResistancePriority_forAxis_(UILayoutPriorityDefaultLow-1, UILayoutConstraintAxisVertical)
