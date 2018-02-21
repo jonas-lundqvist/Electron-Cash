@@ -254,6 +254,12 @@ UIBarButtonSystemItemUndo = 21
 UIBarButtonSystemItemRedo = 22
 UIBarButtonSystemItemPageCurl = 23
 
+#UIBarStyle
+UIBarStyleDefault = 0
+UIBarStyleBlack = 1
+UIBarStyleBlackOpaque = 2
+UIBarStyleBlackTranslucent = 3
+
 # UIViewController.h
 UIViewController = ObjCClass('UIViewController')
 

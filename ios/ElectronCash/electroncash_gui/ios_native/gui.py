@@ -89,6 +89,10 @@ def check_imports():
 
 class GuiHelper(NSObject):
     updateNeeded = objc_property()
+    butsPasswd = objc_property() # array of buttons, one per tab
+    butsCashaddr = objc_property()
+    butsPrefs = objc_property()
+    butsNetwork = objc_property()
     
     @objc_method
     def init(self):
@@ -101,6 +105,10 @@ class GuiHelper(NSObject):
     def dealloc(self) -> None:
         heartbeat.Remove(self, 'doUpdateIfNeeded')
         self.updateNeeded = None
+        self.butsPasswd = None
+        self.butsCashaddr = None
+        self.butsPrefs = None
+        self.butsNewtwork = None
         send_super(self, 'dealloc')
     
     @objc_method
@@ -116,6 +124,17 @@ class GuiHelper(NSObject):
     @objc_method
     def needUpdate(self):
         self.updateNeeded = True
+        
+    @objc_method
+    def onToolButton_(self,but) -> None:
+        print("onToolButton: called with button {}".format(str(but.ptr.value)))
+        
+    @objc_method
+    def navigationController_willShowViewController_animated_(self, nav, vc, anim : bool) -> None:
+        is_hidden = True if len(nav.viewControllers) and vc.ptr.value != nav.viewControllers[0].ptr.value else False
+        #print("SetToolBarHidden=%s"%str(is_hidden))
+        nav.setToolbarHidden_animated_(is_hidden, True)
+    
 
 # Manages the GUI. Part of the ElectronCash API so you can't rename this class easily.
 class ElectrumGui(PrintError):
@@ -166,6 +185,7 @@ class ElectrumGui(PrintError):
         self.addressesVC = adr = addresses.AddressesTableVC.alloc().initWithStyle_(UITableViewStylePlain).autorelease()
         
         self.historyNav = nav = UINavigationController.alloc().initWithRootViewController_(tbl).autorelease()
+
         self.sendNav = nav2 = UINavigationController.alloc().initWithRootViewController_(snd).autorelease()
         self.receiveNav = nav3 = UINavigationController.alloc().initWithRootViewController_(rcv).autorelease()
         self.addressesNav = nav4 = UINavigationController.alloc().initWithRootViewController_(adr).autorelease()
@@ -179,6 +199,8 @@ class ElectrumGui(PrintError):
 
         self.window.rootViewController = self.tabController
 
+        self.setup_toolbar()
+        
         self.window.makeKeyAndVisible()
                  
         # network callbacks
@@ -195,11 +217,24 @@ class ElectrumGui(PrintError):
             print ("REGISTERED NETWORK CALLBACKS")
 
         tbl.refresh()
-        #tbl.showRefreshControl()
+                
                 
         print("UI Created Ok")
         
         return True
+    
+    def setup_toolbar(self):
+        
+        for nav in self.tabController.viewControllers:
+            b = UIBarButtonItem.alloc().initWithBarButtonSystemItem_target_action_(UIBarButtonSystemItemRefresh, self.helper, SEL(b'onToolButton:')).autorelease()
+            root = nav.viewControllers[0] # get root viewcontroller
+            root.setToolbarItems_animated_([b], True)
+            nav.setToolbarHidden_animated_(False, True)
+            # below two cause problems because of our 'persistent toolbar', so disable
+            #nav.hidesBarsWhenKeyboardAppears = True
+            #nav.hidesBarsWhenVerticallyCompact = True
+            nav.delegate = self.helper
+ 
     
     def destroyUI(self):
         if self.window is None:
@@ -343,6 +378,7 @@ class ElectrumGui(PrintError):
     
     def on_label_edited(self, key, newvalue):
         self.wallet.set_label(key, newvalue)
+        self.wallet.storage.write()
         self.historyVC.needUpdate()
         self.addressesVC.needUpdate()
 
