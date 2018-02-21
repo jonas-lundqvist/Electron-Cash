@@ -83,8 +83,9 @@ def create_transaction_detail_view(entry) -> (ObjCInstance, ObjCInstance, ObjCIn
         v.setContentCompressionResistancePriority_forAxis_(UILayoutPriorityDefaultHigh, UILayoutConstraintAxisVertical)
         v.adjustsFontSizeToFitWidth = True
         v.minimumFontSize = 8.0
-        v.borderStyle = UITextBorderStyleLine
+        v.borderStyle = UITextBorderStyleRoundedRect
         v.clearButtonMode = UITextFieldViewModeWhileEditing
+        v.returnKeyType = UIReturnKeyDone
         descriptionTF = v
         
         

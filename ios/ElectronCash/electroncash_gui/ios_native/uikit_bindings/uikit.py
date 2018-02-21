@@ -449,3 +449,86 @@ UIViewContentModeBottomLeft = 11
 UIViewContentModeBottomRight = 12
 
 UIScrollView = ObjCClass('UIScrollView')
+
+# UITextInputTraits.h
+UITextAutocapitalizationTypeNone = 0
+UITextAutocapitalizationTypeWords = 1
+UITextAutocapitalizationTypeSentences = 2
+UITextAutocapitalizationTypeAllCharacters = 3
+
+# //
+# // UITextAutocorrectionType
+# //
+# // Controls keyboard autocorrection behavior for a text widget.
+# // Note: Some input methods do not support inline autocorrection, and 
+# // instead use a conversion and/or candidate selection methodology. In such
+# // cases, these values are ignored by the keyboard/input method implementation.
+# //
+UITextAutocorrectionTypeDefault = 0
+UITextAutocorrectionTypeNo = 1
+UITextAutocorrectionTypeYes = 2
+
+#//
+#// UITextSpellCheckingType
+#//
+#// Controls the annotation of misspelled words for a text widget.
+#// Note: Some input methods do not support spell checking.
+UITextSpellCheckingTypeDefault = 0
+UITextSpellCheckingTypeNo = 1
+UITextSpellCheckingTypeYes = 2
+# //
+# // UIKeyboardType
+# //
+# // Requests that a particular keyboard type be displayed when a text widget
+# // becomes first responder. 
+# // Note: Some keyboard/input methods types may not support every variant. 
+# // In such cases, the input method will make a best effort to find a close 
+# // match to the requested type (e.g. displaying UIKeyboardTypeNumbersAndPunctuation 
+# // type if UIKeyboardTypeNumberPad is not supported).
+# //
+UIKeyboardTypeDefault = 0 #                // Default type for the current input method.
+UIKeyboardTypeASCIICapable = 1 #           // Displays a keyboard which can enter ASCII characters
+UIKeyboardTypeNumbersAndPunctuation = 2 #  // Numbers and assorted punctuation.
+UIKeyboardTypeURL = 3 #                    // A type optimized for URL entry (shows . / .com prominently).
+UIKeyboardTypeNumberPad = 4 #              // A number pad with locale-appropriate digits (0-9, ?-?, ?-?, etc.). Suitable for PIN entry.
+UIKeyboardTypePhonePad = 5 #               // A phone pad (1-9, *, 0, #, with letters under the numbers).
+UIKeyboardTypeNamePhonePad = 6 #          // A type optimized for entering a person's name or phone number.
+UIKeyboardTypeEmailAddress = 7 #           // A type optimized for multiple email address entry (shows space @ . prominently).
+UIKeyboardTypeDecimalPad = 8 # NS_ENUM_AVAILABLE_IOS(4_1),   // A number pad with a decimal point.
+UIKeyboardTypeTwitter = 9 # NS_ENUM_AVAILABLE_IOS(5_0),      // A type optimized for twitter text entry (easy access to @ #)
+UIKeyboardTypeWebSearch = 10 # NS_ENUM_AVAILABLE_IOS(7_0),    // A default keyboard type with URL-oriented addition (shows space . prominently).
+UIKeyboardTypeASCIICapableNumberPad = 11 # NS_ENUM_AVAILABLE_IOS(10_0), // A number pad (0-9) that will always be ASCII digits.
+UIKeyboardTypeAlphabet = UIKeyboardTypeASCIICapable #, // Deprecated
+# //
+# // UIKeyboardAppearance
+# //
+# // Requests a keyboard appearance be used when a text widget
+# // becomes first responder.. 
+# // Note: Some keyboard/input methods types may not support every variant. 
+# // In such cases, the input method will make a best effort to find a close 
+# // match to the requested type.
+# //
+UIKeyboardAppearanceDefault = 0 #         // Default apperance for the current input method.
+UIKeyboardAppearanceDark = 1 # NS_ENUM_AVAILABLE_IOS(7_0),
+UIKeyboardAppearanceLight = 2 # NS_ENUM_AVAILABLE_IOS(7_0),
+UIKeyboardAppearanceAlert = UIKeyboardAppearanceDark #  // Deprecated
+# //
+# // UIReturnKeyType
+# //
+# // Controls the display of the return key. 
+# //
+# // Note: This enum is under discussion and may be replaced with a 
+# // different implementation.
+# //
+UIReturnKeyDefault = 0
+UIReturnKeyGo = 1
+UIReturnKeyGoogle = 2
+UIReturnKeyJoin = 3
+UIReturnKeyNext = 4
+UIReturnKeyRoute = 5
+UIReturnKeySearch = 6
+UIReturnKeySend = 7
+UIReturnKeyYahoo = 8
+UIReturnKeyDone = 9
+UIReturnKeyEmergencyCall = 10
+UIReturnKeyContinue = 11
