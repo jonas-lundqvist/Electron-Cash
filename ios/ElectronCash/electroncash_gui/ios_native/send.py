@@ -34,7 +34,8 @@ class SendVC(UIViewController):
         objs = NSBundle.mainBundle.loadNibNamed_owner_options_("Send",self,None)
         assert objs is not None and len(objs)
         self.view = objs[0]
-        lbl = self.view.viewWithTag_(1337)
-
-        if lbl is not None:
-            lbl.text = "Found 1337!"
+        v = self.view.viewWithTag_(100)
+        #v.setAutoresizingMask_(UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight)
+        #self.view.setAutoresizingMask_(UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight)
+        #self.view.setTranslatesAutoresizingMaskIntoConstraints_(True)
+        #lbl = self.view.viewWithTag_(1337)

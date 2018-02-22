@@ -73,8 +73,9 @@ def create_transaction_detail_view(entry) -> (ObjCInstance, ObjCInstance, ObjCIn
         v.setContentCompressionResistancePriority_forAxis_(UILayoutPriorityDefaultHigh, UILayoutConstraintAxisHorizontal)
         viewsV1.append(v)
 
-        v = UITextField.new().autorelease() 
+        v = UITextField.new().autorelease()
         v.text = label
+        v.placeholder = _("Tap to add a description")
         if amount < 0:
             v.backgroundColor = UIColor.colorWithRed_green_blue_alpha_(1.0,0.2,0.2,0.040)
         else:
