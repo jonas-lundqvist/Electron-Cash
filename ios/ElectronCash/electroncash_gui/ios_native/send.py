@@ -28,6 +28,10 @@ class SendVC(UIViewController):
         self.stuff = None
         self.view = None
         send_super(self, 'dealloc')
+
+    @objc_method
+    def didRotateFromInterfaceOrientation_(self, o : int) -> None:
+        pass
     
     @objc_method
     def loadView(self) -> None:
@@ -35,7 +39,3 @@ class SendVC(UIViewController):
         assert objs is not None and len(objs)
         self.view = objs[0]
         v = self.view.viewWithTag_(100)
-        #v.setAutoresizingMask_(UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight)
-        #self.view.setAutoresizingMask_(UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight)
-        #self.view.setTranslatesAutoresizingMaskIntoConstraints_(True)
-        #lbl = self.view.viewWithTag_(1337)
