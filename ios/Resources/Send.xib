@@ -17,7 +17,7 @@
                 <view tag="100" contentMode="TopLeft" horizontalCompressionResistancePriority="1000" verticalCompressionResistancePriority="1000" translatesAutoresizingMaskIntoConstraints="NO" id="iN0-l3-epB" userLabel="Content View">
                     <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
                     <subviews>
-                        <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Pay to" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" minimumScaleFactor="0.5" preferredMaxLayoutWidth="310" translatesAutoresizingMaskIntoConstraints="NO" id="Oxq-xj-JGe">
+                        <label opaque="NO" userInteractionEnabled="NO" tag="110" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Pay to" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" minimumScaleFactor="0.5" preferredMaxLayoutWidth="310" translatesAutoresizingMaskIntoConstraints="NO" id="Oxq-xj-JGe">
                             <rect key="frame" x="8" y="10" width="367" height="21"/>
                             <rect key="contentStretch" x="1" y="0.0" width="1" height="1"/>
                             <fontDescription key="fontDescription" type="system" pointSize="17"/>
@@ -25,7 +25,7 @@
                             <nil key="highlightedColor"/>
                             <variation key="heightClass=regular-widthClass=regular" layoutMarginsFollowReadableWidth="NO"/>
                         </label>
-                        <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Description" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" minimumScaleFactor="0.5" preferredMaxLayoutWidth="310" translatesAutoresizingMaskIntoConstraints="NO" id="j7K-4S-lZ9">
+                        <label opaque="NO" userInteractionEnabled="NO" tag="220" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Description" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" minimumScaleFactor="0.5" preferredMaxLayoutWidth="310" translatesAutoresizingMaskIntoConstraints="NO" id="j7K-4S-lZ9">
                             <rect key="frame" x="8" y="93" width="367" height="21"/>
                             <rect key="contentStretch" x="1" y="0.0" width="1" height="1"/>
                             <fontDescription key="fontDescription" type="system" pointSize="17"/>
@@ -41,11 +41,11 @@
                             <fontDescription key="fontDescription" type="system" pointSize="14"/>
                             <textInputTraits key="textInputTraits" autocorrectionType="no" spellCheckingType="no" keyboardType="alphabet" returnKeyType="continue"/>
                         </textField>
-                        <button opaque="NO" contentMode="right" verticalHuggingPriority="252" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="3fW-oz-3Eo">
+                        <button opaque="NO" tag="150" contentMode="right" verticalHuggingPriority="252" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="3fW-oz-3Eo">
                             <rect key="frame" x="347" y="42" width="78" height="24"/>
                             <state key="normal" title="Button" image="qrcode.png"/>
                         </button>
-                        <textField opaque="NO" clipsSubviews="YES" contentMode="scaleToFill" verticalHuggingPriority="253" verticalCompressionResistancePriority="751" contentHorizontalAlignment="left" contentVerticalAlignment="center" borderStyle="roundedRect" placeholder="Tap to add a description" textAlignment="natural" minimumFontSize="7" translatesAutoresizingMaskIntoConstraints="NO" id="DIP-SW-ID7">
+                        <textField opaque="NO" clipsSubviews="YES" tag="230" contentMode="scaleToFill" verticalHuggingPriority="253" verticalCompressionResistancePriority="751" contentHorizontalAlignment="left" contentVerticalAlignment="center" borderStyle="roundedRect" placeholder="Tap to add a description" textAlignment="natural" minimumFontSize="7" translatesAutoresizingMaskIntoConstraints="NO" id="DIP-SW-ID7">
                             <rect key="frame" x="26" y="122" width="340" height="30"/>
                             <constraints>
                                 <constraint firstAttribute="width" relation="greaterThanOrEqual" constant="285" id="z9R-uA-EbJ"/>
@@ -54,14 +54,14 @@
                             <fontDescription key="fontDescription" type="system" pointSize="14"/>
                             <textInputTraits key="textInputTraits" returnKeyType="continue"/>
                         </textField>
-                        <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Amount (BCH)" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" minimumScaleFactor="0.25" preferredMaxLayoutWidth="310" translatesAutoresizingMaskIntoConstraints="NO" id="E7N-nC-teV">
+                        <label opaque="NO" userInteractionEnabled="NO" tag="200" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Amount (BCH)" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" minimumScaleFactor="0.25" preferredMaxLayoutWidth="310" translatesAutoresizingMaskIntoConstraints="NO" id="E7N-nC-teV">
                             <rect key="frame" x="8" y="176" width="111" height="21"/>
                             <rect key="contentStretch" x="1" y="0.0" width="1" height="1"/>
                             <fontDescription key="fontDescription" type="system" pointSize="17"/>
                             <nil key="textColor"/>
                             <nil key="highlightedColor"/>
                         </label>
-                        <textField opaque="NO" clipsSubviews="YES" contentMode="right" horizontalCompressionResistancePriority="250" contentHorizontalAlignment="right" contentVerticalAlignment="center" borderStyle="roundedRect" placeholder="Enter amount (BCH)" textAlignment="center" minimumFontSize="7" translatesAutoresizingMaskIntoConstraints="NO" id="bfH-Zw-ELf">
+                        <textField opaque="NO" clipsSubviews="YES" tag="210" contentMode="right" horizontalCompressionResistancePriority="250" contentHorizontalAlignment="right" contentVerticalAlignment="center" borderStyle="roundedRect" placeholder="Enter amount (BCH)" textAlignment="center" minimumFontSize="7" translatesAutoresizingMaskIntoConstraints="NO" id="bfH-Zw-ELf">
                             <rect key="frame" x="139" y="172" width="159" height="30"/>
                             <constraints>
                                 <constraint firstAttribute="width" relation="greaterThanOrEqual" constant="119" id="7bO-Yv-PAh"/>

@@ -68,7 +68,7 @@ def create_transaction_detail_view(entry) -> (ObjCInstance, ObjCInstance, ObjCIn
     
     if tx_hash is not None and len(tx_hash): # always do this so they can edit the description to add a label to an empty tx
         v = UILabel.new().autorelease()
-        v.text = _("Description:") + "  "
+        v.text = _("Description") + ":  "
         v.setContentHuggingPriority_forAxis_(UILayoutPriorityDefaultHigh, UILayoutConstraintAxisHorizontal)
         v.setContentCompressionResistancePriority_forAxis_(UILayoutPriorityDefaultHigh, UILayoutConstraintAxisHorizontal)
         viewsV1.append(v)

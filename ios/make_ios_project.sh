@@ -83,6 +83,7 @@ if [ -f "${infoplist}" ]; then
 			exit 1
 		fi
 	fi
+	plutil -insert "NSCameraUsageDescription" -string "The camera is needed to scan QR codes" -- ${infoplist}
 fi
 
 if [ -d overrides/ ]; then
@@ -117,12 +118,17 @@ fi
 resources=Resources/*
 if [ -n "$resources" ]; then
 	echo ""
-	echo "Adding Resurces/ to project..."
+	echo "Adding Resurces/ and CustomCode/ to project..."
 	echo ""
-	cp -fRav Resources iOS/
-	(cd iOS && python3 -m pbxproj folder "${xcode_file}" Resources)
+	cp -fRav Resources CustomCode iOS/
+	(cd iOS && python3 -m pbxproj folder -r "${xcode_file}" Resources)
 	if [ "$?" != 0 ]; then
-		echo "Error adding resources to iOS/$xcode_file... aborting."
+		echo "Error adding Resources to iOS/$xcode_file... aborting."
+		exit 1
+	fi
+	(cd iOS && python3 -m pbxproj folder -r "${xcode_file}" CustomCode)
+	if [ "$?" != 0 ]; then
+		echo "Error adding CustomCode to iOS/$xcode_file... aborting."
 		exit 1
 	fi
 fi

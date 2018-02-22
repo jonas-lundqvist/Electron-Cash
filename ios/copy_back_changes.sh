@@ -19,6 +19,7 @@ popd > /dev/null
 pushd . > /dev/null
 cd $projdir_top
 res=`find Resources -type f -print`
+ccode=`find CustomCode -type f -print`
 popd > /dev/null
 
 allYes=0
@@ -79,6 +80,12 @@ for file in $res; do
     f1="${file}"
     f2="${projdir_top}/${file}"
     doIt "$f1" "$f2" "Resources/"
+done
+
+for file in $ccode; do
+    f1="${file}"
+    f2="${projdir_top}/${file}"
+    doIt "$f1" "$f2" "CustomCode/"
 done
 
 echo ""
