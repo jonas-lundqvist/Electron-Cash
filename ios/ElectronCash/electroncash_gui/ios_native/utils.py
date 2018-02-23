@@ -59,6 +59,7 @@ def nsattributedstring_from_html(html : str) -> ObjCInstance:
 
 callables_tmp = {}
 completion_tmp = None
+alerts_helpful_glue = None
 
 def show_alert(vc : ObjCInstance, # the viewcontroller to present the alert view in
                title : str, # the alert title
@@ -71,8 +72,12 @@ def show_alert(vc : ObjCInstance, # the viewcontroller to present the alert view
                alertStyle: int = UIAlertControllerStyleAlert,
                completion: callable = None # optional completion function that gets called when alert is presented
                ) -> None:
+    global alerts_helpful_glue
     global callables_tmp
     global completion_tmp
+    if alerts_helpful_glue is not None:
+        print("WARNING / FIXME: private HelpfulGlue instance was not None -- possible leak?")
+    alerts_helpful_glue = HelpfulGlue.new()
     alert = UIAlertController.alertControllerWithTitle_message_preferredStyle_(title, message, alertStyle)
     callables_tmp = {}
     completion_tmp = None
@@ -84,35 +89,50 @@ def show_alert(vc : ObjCInstance, # the viewcontroller to present the alert view
             else:
                 acts.appens([k])
         actions = acts
+    ct=0
     for i,arr in enumerate(actions):
+        has_callable = False
         if type(arr) is list or type(arr) is tuple:
             actTit = arr[0]
             fun_args = arr[1:]
-            callables_tmp[actTit] = fun_args
+            has_callable = True
         else:
             actTit = arr
         style = UIAlertActionStyleCancel if actTit == cancel else UIAlertActionStyleDefault
         style = UIAlertActionStyleDestructive if actTit == destructive else style
-        act = HelpfulGlue.actionWithTitle_style_python_(actTit,style,'''
+        act = alerts_helpful_glue.actionWithTitle_style_python_(actTit,style,'''
 import electroncash_gui.ios_native.utils as u
+from electroncash_gui.ios_native.custom_objc import *
 
-if u.callables_tmp.get(action_title):
-    arr = u.callables_tmp[action_title]
+if u.callables_tmp.get(action_ptr):
+    arr = u.callables_tmp[action_ptr]
     fun = arr[0]
     fun(*arr[1:])
+u.callables_tmp = {}
+if u.alerts_helpful_glue is not None:
+    u.alerts_helpful_glue.autorelease()
+    u.alerts_helpful_glue = None
 ''')
+        if has_callable:
+            callables_tmp[act.ptr.value] = fun_args
         alert.addAction_(act)
+        ct+=1
     if completion is not None:
         completion_tmp = completion
         HelpfulGlue.viewController_presentModalViewController_animated_python_(vc,alert,True,'''
 import electroncash_gui.ios_native.utils as u
 if u.completion_tmp is not None:
     u.completion_tmp()
-    u.completion_tmp = None
+u.completion_tmp = None
 ''')
     else:
         HelpfulGlue.viewController_presentModalViewController_animated_python_(vc,alert,True,None)
-
+    if not ct:
+        # weird.. they didn't supply any buttons to the alert -- perhaps they want some "please wait.." style alert..?
+        # clean up the unneeded instance...
+        alerts_helpful_glue.autorelease()
+        alerts_helful_glue = None
+        #print("Removed unneded private HelpfulGlue...")
 
 
 

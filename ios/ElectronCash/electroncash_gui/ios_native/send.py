@@ -9,7 +9,7 @@ import time
 import html
 from .uikit_bindings import *
 
-tmpBlocks = {}
+#tmpBlocks = {}
 
 class SendVC(UIViewController):
     stuff = objc_property() # an NSArray of stuff to display
@@ -25,9 +25,9 @@ class SendVC(UIViewController):
     
     @objc_method
     def dealloc(self) -> None:
-        global tmpBlocks
-        if tmpBlocks.get(self.ptr.value):
-            del tmpBlocks[self.ptr.value]
+        #global tmpBlocks
+        #if tmpBlocks.get(self.ptr.value):
+        #    del tmpBlocks[self.ptr.value]
         self.stuff = None
         self.view = None
         send_super(self, 'dealloc')
@@ -50,11 +50,11 @@ class SendVC(UIViewController):
         # blocks are buggy in our current version of rubicon-objc.. they can throw a segfault if the Block object was reaped by python before being called..
         # so we must store them in a global table.. the below illustrates that workaround.  This is here for documentation to myself, basically.
         # Alternative is to us the HelpfulGlue method provided that works around this issue as well using evaluated python and also accepting None as a parameter...
-        global tmpBlocks
-        nilBlock = Block(lambda: None, None)
-        tmpBlocks[self.ptr.value] = nilBlock
-        self.dismissViewControllerAnimated_completion_(True,nilBlock)
-        #HelpfulGlue.viewController_dismissModalViewControllerAnimated_python_(self, True,None)
+        #global tmpBlocks
+        #nilBlock = Block(lambda: None, None)
+        #tmpBlocks[self.ptr.value] = nilBlock
+        #self.dismissViewControllerAnimated_completion_(True,nilBlock)
+        HelpfulGlue.viewController_dismissModalViewControllerAnimated_python_(self, True,None)
         self.qr = None
         self.qrvc = None
         

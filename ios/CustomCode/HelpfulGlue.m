@@ -14,10 +14,13 @@
     NSMutableDictionary *dict;
 }
 @property (strong,nonatomic) NSMutableDictionary *dict;
+@property (nonatomic,class,readonly) HelpfulGlue *instance;
 @end
 
 @implementation HelpfulGlue
 @synthesize dict;
+
+static HelpfulGlue *ins = nil;
 
 - (instancetype) init {
     self = [super init];
@@ -27,41 +30,60 @@
 
 - (void) dealloc {
     self.dict = nil;
+    if (self == ins) ins = nil;
+    //NSLog(@"HelpfulGlue dealloc");
     // called by compiler: [super dealloc];
 }
 
 + (HelpfulGlue *)instance {
-    static HelpfulGlue *ins = nil;
-
     if (!ins) ins = [HelpfulGlue new];
     return ins;
 }
 
 + (UIAlertAction *) actionWithTitle:(NSString *)title style:(UIAlertActionStyle)style python:(NSString *)pyth {
-    __block HelpfulGlue *slf = [HelpfulGlue instance];
+    return [HelpfulGlue.instance actionWithTitle:title style:style python:pyth];
+}
+
+- (UIAlertAction *) actionWithTitle:(NSString *)title style:(UIAlertActionStyle)style python:(NSString *)pyth {
+    __block HelpfulGlue *slf = self;
     UIAlertAction *ret;
-    ret = [UIAlertAction actionWithTitle:title style:style handler:^(UIAlertAction *act) {
-        NSString *pyth = nil;
-        for (NSNumber *n in slf.dict) {
-            unsigned long val = [n unsignedLongValue];
-            if (val == (unsigned long)act) {
-                pyth = slf.dict[n];
-//                NSLog(@"Found the python: '%@'", pyth);
-                pyth = [NSString stringWithFormat:@"action_ptr=%ld\naction_title='''%@'''\n\n%@",(long)act,act.title,pyth];
-                break;
+    if (pyth) {
+        ret = [UIAlertAction actionWithTitle:title style:style handler:^(UIAlertAction *act) {
+            NSString *pyth = nil;
+            for (NSNumber *n in slf.dict) {
+                unsigned long val = [n unsignedLongValue];
+                if (val == (unsigned long)act) {
+                    pyth = slf.dict[n];
+                    //                NSLog(@"Found the python: '%@'", pyth);
+                    pyth = [NSString stringWithFormat:@"action_ptr=%lu\naction_title='''%@'''\n\n%@",(unsigned long)act,act.title,pyth];
+                    break;
+                }
             }
-        }
-        if (pyth) {
-//            NSLog(@"Executing python.. lord help us..");
-            PyRun_SimpleString(pyth.UTF8String);
-            [slf.dict removeObjectForKey:pyth];
-        } else {
-            NSLog(@"Handler called but python not found for object '%@'",[act description]);
-        }
-    }];
-    NSNumber *n = [NSNumber numberWithUnsignedLongLong:(unsigned long long)ret];
-    slf.dict[n] = pyth;
+            if (pyth) {
+                //            NSLog(@"Executing python.. lord help us..");
+                PyRun_SimpleString(pyth.UTF8String);
+                // NB: python handler should call [slf clearCallbacksTable] at some point otherwise this will leak!
+                //            [slf.dict removeObjectForKey:pyth];
+            } else {
+                NSLog(@"Handler called but python not found for object '%@'",[act description]);
+            }
+        }];
+        NSNumber *n = [NSNumber numberWithUnsignedLong:(unsigned long)ret];
+        self.dict[n] = pyth;
+    } else {
+        ret = [UIAlertAction actionWithTitle:title style:style handler:nil];
+    }
     return ret;
+}
+
++ (void) clearCallbacksTable {
+    [self.instance clearCallbacksTable];
+}
+
+- (void) clearCallbacksTable {
+    //NSUInteger ct = self.dict.count;
+    [self.dict removeAllObjects];
+    //NSLog(@"HelpfulGlue callbacks table cleared %d entries!",(int)ct);
 }
 
 + (void) viewController:(UIViewController *)vc presentModalViewController:(UIViewController *)mvc animated:(BOOL)anim
@@ -74,7 +96,7 @@
         __block unsigned long mvc_ptr = (unsigned long)mvc;
         [vc presentViewController:mvc animated:anim completion:^{
 //            NSLog(@"Executing python.. lord help us..");
-            thePython = [NSString stringWithFormat:@"vc_ptr=%ld\nmvc_ptr=%ld\n\n%@",vc_ptr, mvc_ptr, thePython];
+            thePython = [NSString stringWithFormat:@"vc_ptr=%lu\nmvc_ptr=%lu\n\n%@",(unsigned long)vc_ptr, (unsigned long)mvc_ptr, thePython];
             PyRun_SimpleString(thePython.UTF8String);
         }];
     }
@@ -89,7 +111,7 @@
         __block unsigned long vc_ptr = (unsigned long)vc;
         [vc dismissViewControllerAnimated:anim completion:^{
             //            NSLog(@"Executing python.. lord help us..");
-            thePython = [NSString stringWithFormat:@"vc_ptr=%ld\n\n%@",vc_ptr, thePython];
+            thePython = [NSString stringWithFormat:@"vc_ptr=%lu\n\n%@",(unsigned long)vc_ptr, thePython];
             PyRun_SimpleString(thePython.UTF8String);
         }];
     }
