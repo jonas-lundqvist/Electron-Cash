@@ -43,3 +43,6 @@ NSMethodSignature = ObjCClass('NSMethodSignature')
 NSEnumerator = ObjCClass('NSEnumerator')
 NSBundle = ObjCClass('NSBundle')
 #NSNumber = ObjCClass('NSNumber')
+
+NSRunLoop = ObjCClass('NSRunLoop')
+NSDefaultRunLoopMode='kCFRunLoopDefaultMode'

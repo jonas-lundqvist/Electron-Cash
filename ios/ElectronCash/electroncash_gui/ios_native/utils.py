@@ -60,6 +60,7 @@ def nsattributedstring_from_html(html : str) -> ObjCInstance:
 callables_tmp = {}
 completion_tmp = None
 alerts_helpful_glue = None
+    
 
 def show_alert(vc : ObjCInstance, # the viewcontroller to present the alert view in
                title : str, # the alert title
@@ -70,8 +71,10 @@ def show_alert(vc : ObjCInstance, # the viewcontroller to present the alert view
                cancel: str = None, # name of the button you want to designate as 'Cancel' (ends up being first)
                destructive: str = None, # name of the button you want to designate as destructive (ends up being red)
                alertStyle: int = UIAlertControllerStyleAlert,
-               completion: callable = None # optional completion function that gets called when alert is presented
+               completion: callable = None, # optional completion function that gets called when alert is presented
+               animated: bool = True # whether or not to animate the alert
                ) -> None:
+    assert NSThread.currentThread.isMainThread
     global alerts_helpful_glue
     global callables_tmp
     global completion_tmp
@@ -119,14 +122,14 @@ if u.alerts_helpful_glue is not None:
         ct+=1
     if completion is not None:
         completion_tmp = completion
-        HelpfulGlue.viewController_presentModalViewController_animated_python_(vc,alert,True,'''
+        HelpfulGlue.viewController_presentModalViewController_animated_python_(vc,alert,animated,'''
 import electroncash_gui.ios_native.utils as u
 if u.completion_tmp is not None:
     u.completion_tmp()
 u.completion_tmp = None
 ''')
     else:
-        HelpfulGlue.viewController_presentModalViewController_animated_python_(vc,alert,True,None)
+        HelpfulGlue.viewController_presentModalViewController_animated_python_(vc,alert,animated,None)
     if not ct:
         # weird.. they didn't supply any buttons to the alert -- perhaps they want some "please wait.." style alert..?
         # clean up the unneeded instance...
@@ -134,5 +137,43 @@ u.completion_tmp = None
         alerts_helful_glue = None
         #print("Removed unneded private HelpfulGlue...")
 
+# Useful for doing a "Please wait..." style screen that takes itself offscreen automatically after a delay
+# (may end up using this for some info alerts.. not sure yet)
+def show_timed_alert(vc : ObjCInstance, title : str, message : str,
+                     timeout : float, alertStyle : int = UIAlertControllerStyleAlert, animated : bool = True) -> None:
+    assert NSThread.currentThread.isMainThread
+    def completionFunc(vc,animated,timeout):
+        #print("Completion on %s %s..."%(str(vc.ptr.value),str(animated)))
+        def dismisser(vc,animated):
+            #print("Dismisser on %s %s..."%(str(vc.ptr.value),str(animated)))
+            HelpfulGlue.viewController_dismissModalViewControllerAnimated_python_(vc,animated,None)
+        call_later(timeout, dismisser, vc, animated)
+    show_alert(vc=vc, title=title, message=message, actions=[], alertStyle=alertStyle, completion=lambda: completionFunc(vc,animated,timeout))
 
+
+def do_in_main_thread(func : callable, *args) -> None:
+    if NSThread.currentThread.isMainThread:
+        func(*args)
+    else:
+        call_later(0.001, func, *args)
+
+# Useful for having python call anything (including obj-c-backed python classes) off of the mainLoop/timer
+# sometime in the future.
+# Note: unlike the other functions above -- this *can* be used from any thread and the callback will always
+#       run in the Main Thead!  This is useful for calling into the GUI from a separate thread, for example.
+calllater_table = {}
+def call_later(timeout : float, func : callable, *args) -> None:
+    python = '''
+import electroncash_gui.ios_native.utils as u
+
+if u.calllater_table.get(timer_ptr):
+    f = u.calllater_table[timer_ptr][0]
+    if f is not None:
+        argz = u.calllater_table[timer_ptr][1:]
+        f(*argz)
+    del u.calllater_table[timer_ptr]
+'''
+    global calllater_table
+    ptr =  HelpfulGlue.evalPython_afterDelay_(python,timeout,True)
+    calllater_table[ptr] = [func,*args]
 
