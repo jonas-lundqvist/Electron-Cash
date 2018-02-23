@@ -552,3 +552,6 @@ UIModalPresentationOverFullScreen = 5
 UIModalPresentationOverCurrentContext = 6
 UIModalPresentationPopover = 7
 UIModalPresentationNone  = -1
+
+# Local stuff
+NSLocale = ObjCClass("NSLocale")

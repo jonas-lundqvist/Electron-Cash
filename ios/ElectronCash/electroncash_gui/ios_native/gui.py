@@ -43,7 +43,7 @@ try:
 except Exception as e:
     sys.exit("Error: Could not import iOS libs: %s"%str(e))
 
-from electroncash.i18n import _, set_language
+from electroncash.i18n import _, set_language, languages
 #from electroncash.plugins import run_hook
 from electroncash import WalletStorage, Wallet
 # from electroncash.synchronizer import Synchronizer
@@ -145,7 +145,7 @@ class ElectrumGui(PrintError):
         ElectrumGui.gui = self
         self.appName = 'Electron-Cash'
         self.appDomain = 'com.c3-soft.ElectronCash'
-        set_language(config.get('language'))
+        self.set_language()
 
         #todo: support multiple wallets in 1 UI?
         self.config = config
@@ -381,6 +381,23 @@ class ElectrumGui(PrintError):
         self.wallet.storage.write()
         self.historyVC.needUpdate()
         self.addressesVC.needUpdate()
+
+
+    def set_language(self):
+        langs = NSLocale.preferredLanguages
+        if langs:
+            l = langs[0].replace('-','_')
+            if not languages.get(l):
+                # iOS sometimes returns a mixed language_REGION code, so try and match it to what we have 
+                pre1 = l.split('_')[0]
+                for k in languages.keys():
+                    pre2 = k.split('_')[0]
+                    if pre1 == pre2:
+                        print("OS language is '%s', but we are guessing this matches our language code '%s'"%(l, k))
+                        l = k
+                        break
+            print ("Setting language to {}".format(l))
+            set_language(l)
 
 
     # this method is called by Electron Cash libs to start the GUI

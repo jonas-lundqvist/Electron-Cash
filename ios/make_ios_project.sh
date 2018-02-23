@@ -48,6 +48,13 @@ if [ -d ElectronCash/electroncash ]; then
 fi
 
 echo "Pulling 'electroncash' libs into project from ../lib ..."
+if [ ! -d ../lib/locale ]; then
+	(cd .. && contrib/make_locale && cd ios)
+	if [ "$?" != 0 ]; then
+		echo ERROR: Could not build locales
+		exit 1
+	fi
+fi
 cp -fpR ../lib ElectronCash/electroncash
 find ElectronCash -name \*.pyc -exec rm -f {} \; 
 

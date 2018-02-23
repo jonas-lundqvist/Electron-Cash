@@ -54,7 +54,7 @@ class AddressesTableVC(UITableViewController):
     def initWithStyle_(self, style : int):
         self = ObjCInstance(send_super(self, 'initWithStyle:', style, argtypes=[c_int]))
         self.needsRefresh = False
-        self.title = _("Addresses")
+        self.title = _("&Addresses").split('&')[1]
                 
         self.refreshControl = UIRefreshControl.alloc().init().autorelease()
         self.refreshControl.addTarget_action_forControlEvents_(self,SEL('needUpdate'), UIControlEventValueChanged)

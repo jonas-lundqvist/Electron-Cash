@@ -128,7 +128,7 @@ def create_transaction_detail_view(entry) -> (ObjCInstance, ObjCInstance, ObjCIn
     if timestamp or exp_n:
         v = UILabel.new().autorelease()
         if timestamp:
-            v.text = _("Date: {}").format("  ")
+            v.text = _("Date") + ":   "
         elif exp_n:
             v.text = _("Expected confirmation time") + ':  '
         v.setContentHuggingPriority_forAxis_(UILayoutPriorityDefaultHigh, UILayoutConstraintAxisHorizontal)

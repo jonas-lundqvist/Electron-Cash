@@ -70,6 +70,18 @@ class SendVC(UIViewController):
         lbl = self.view.viewWithTag_(220)
         lbl.text = _("Description")
         
+        but = self.view.viewWithTag_(1090)
+        but.setTitle_forState_(_("Max"), UIControlStateNormal)
+        
+        but = self.view.viewWithTag_(1100)
+        but.setTitle_forState_(_("Clear"), UIControlStateNormal)
+        
+        but = self.view.viewWithTag_(1110)
+        but.setTitle_forState_(_("Preview"), UIControlStateNormal)
+        
+        but = self.view.viewWithTag_(1110)
+        but.setTitle_forState_(_("Send"), UIControlStateNormal)
+
         #tedit = self.view.viewWithTag_(230)
         #tedit.placeholder = _("Description of the transaction (not mandatory).")
         
