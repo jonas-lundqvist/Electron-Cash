@@ -7,15 +7,13 @@ from electroncash.i18n import _
 from .custom_objc import *
 import time
 import html
-
-try:
-    from .uikit_bindings import *
-except Exception as e:
-    sys.exit("Error: Could not import iOS libs: %s"%str(e))
+from .uikit_bindings import *
 
 
 class SendVC(UIViewController):
     stuff = objc_property() # an NSArray of stuff to display
+    qr = objc_property()
+    qrvc = objc_property()
     
     @objc_method
     def init(self):
@@ -33,6 +31,22 @@ class SendVC(UIViewController):
     @objc_method
     def didRotateFromInterfaceOrientation_(self, o : int) -> None:
         pass
+    
+    @objc_method
+    def reader_didScanResult_(self, reader, result) -> None:
+        print("Reader result=%s"%(str(result)))
+        # TODO: check result here..
+        tedit = self.view.viewWithTag_(115)
+        tedit.text = result
+        self.readerDidCancel_(reader)
+
+ 
+    @objc_method
+    def readerDidCancel_(self, reader) -> None:
+        self.dismissModalViewControllerAnimated_(True)
+        self.qr = None
+        self.qrvc = None
+        
         
     @objc_method
     def loadView(self) -> None:
@@ -63,12 +77,14 @@ class SendVC(UIViewController):
         but = self.view.viewWithTag_(150)
         but.addTarget_action_forControlEvents_(self, SEL(b'onQRBut:'), UIControlEventTouchUpInside)
 
-
     @objc_method
     def onQRBut_(self, but):
         if not QRCodeReader.isAvailable:
-            #print("QR NOT AVAIL")
-            pass
+            utils.show_alert(self, _("QR Not Avilable"), _("The camera is not available for reading QR codes"))
         else:
-            #print("QR AVAIL")
+            self.qr = QRCodeReader.new().autorelease()
+            self.qrvc = QRCodeReaderViewController.readerWithCancelButtonTitle_codeReader_startScanningAtLoad_showSwitchCameraButton_showTorchButton_("Cancel",self.qr,True,True,True)
+            self.qrvc.modalPresentationStyle = UIModalPresentationFormSheet
+            self.qrvc.delegate = self
+            self.presentModalViewController_animated_(self.qrvc, True)
             pass

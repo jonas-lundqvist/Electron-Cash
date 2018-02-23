@@ -25,10 +25,8 @@
 # SOFTWARE.
 import sys
 import os
-try:
-    from .uikit_bindings import *
-except Exception as e:
-    sys.exit("Error: Could not import iOS libs: %s"%str(e))
+from .uikit_bindings import *
+from .custom_objc import *
 
 bundle_identifier = NSBundle.mainBundle.bundleIdentifier
 bundle_domain = '.'.join(bundle_identifier.split('.')[0:-1])
@@ -58,3 +56,63 @@ def get_bundle_resource_path(fileName: str, directory: str = None) -> str:
 def nsattributedstring_from_html(html : str) -> ObjCInstance:
     data = ns_from_py(html.encode('utf-8'))
     return NSMutableAttributedString.alloc().initWithHTML_documentAttributes_(data,None).autorelease()
+
+callables_tmp = {}
+completion_tmp = None
+
+def show_alert(vc : ObjCInstance, # the viewcontroller to present the alert view in
+               title : str, # the alert title
+               message : str, # the alert message
+               # actions is a list of lists: each element has:  Button names, plus optional callback spec
+               # each element of list is [ 'ActionTitle', callable, arg1, arg2... ] for optional callbacks
+               actions: list = [ ['Ok'] ],  # default has no callbacks and shows Ok button
+               cancel: str = None, # name of the button you want to designate as 'Cancel' (ends up being first)
+               destructive: str = None, # name of the button you want to designate as destructive (ends up being red)
+               alertStyle: int = UIAlertControllerStyleAlert,
+               completion: callable = None # optional completion function that gets called when alert is presented
+               ) -> None:
+    global callables_tmp
+    global completion_tmp
+    alert = UIAlertController.alertControllerWithTitle_message_preferredStyle_(title, message, alertStyle)
+    callables_tmp = {}
+    completion_tmp = None
+    if type(actions) is dict:
+        acts = []
+        for k in actions.keys():
+            if actions[k] is not None:
+                acts.append([k,*actions[k]])
+            else:
+                acts.appens([k])
+        actions = acts
+    for i,arr in enumerate(actions):
+        if type(arr) is list or type(arr) is tuple:
+            actTit = arr[0]
+            fun_args = arr[1:]
+            callables_tmp[actTit] = fun_args
+        else:
+            actTit = arr
+        style = UIAlertActionStyleCancel if actTit == cancel else UIAlertActionStyleDefault
+        style = UIAlertActionStyleDestructive if actTit == destructive else style
+        act = HelpfulGlue.actionWithTitle_style_python_(actTit,style,'''
+import electroncash_gui.ios_native.utils as u
+
+if u.callables_tmp.get(action_title):
+    arr = u.callables_tmp[action_title]
+    fun = arr[0]
+    fun(*arr[1:])
+''')
+        alert.addAction_(act)
+    if completion is not None:
+        completion_tmp = completion
+        HelpfulGlue.viewController_presentModalViewController_animated_python_(vc,alert,True,'''
+import electroncash_gui.ios_native.utils as u
+if u.completion_tmp is not None:
+    u.completion_tmp()
+    u.completion_tmp = None
+''')
+    else:
+        HelpfulGlue.viewController_presentModalViewController_animated_python_(vc,alert,True,None)
+
+
+
+

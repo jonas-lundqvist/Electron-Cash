@@ -1,3 +1,5 @@
+import sys
+
 try:
     from .uikit_bindings import *
 except Exception as e:
@@ -5,3 +7,5 @@ except Exception as e:
 
 
 QRCodeReader = ObjCClass('QRCodeReader')
+QRCodeReaderViewController = ObjCClass('QRCodeReaderViewController')
+HelpfulGlue = ObjCClass('HelpfulGlue')

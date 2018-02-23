@@ -532,3 +532,23 @@ UIReturnKeyYahoo = 8
 UIReturnKeyDone = 9
 UIReturnKeyEmergencyCall = 10
 UIReturnKeyContinue = 11
+
+# UIAlertAction and UIAlertController stuff
+UIAlertController = ObjCClass('UIAlertController')
+UIAlertAction = ObjCClass('UIAlertAction')
+UIAlertActionStyleDefault = 0
+UIAlertActionStyleCancel = 1
+UIAlertActionStyleDestructive = 2
+UIAlertControllerStyleActionSheet = 0
+UIAlertControllerStyleAlert = 1
+
+# UIModalPresentationStyle
+UIModalPresentationFullScreen = 0
+UIModalPresentationPageSheet = 1
+UIModalPresentationFormSheet = 2
+UIModalPresentationCurrentContext = 3
+UIModalPresentationCustom = 4
+UIModalPresentationOverFullScreen = 5
+UIModalPresentationOverCurrentContext = 6
+UIModalPresentationPopover = 7
+UIModalPresentationNone  = -1
