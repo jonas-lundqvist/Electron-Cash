@@ -80,5 +80,20 @@
     }
 }
 
++ (void) viewController:(UIViewController *)vc dismissModalViewControllerAnimated:(BOOL)anim
+                 python:(NSString *)python {
+    if (!python || !python.length)
+        [vc dismissViewControllerAnimated:anim completion:nil];
+    else {
+        __block NSString *thePython = python;
+        __block unsigned long vc_ptr = (unsigned long)vc;
+        [vc dismissViewControllerAnimated:anim completion:^{
+            //            NSLog(@"Executing python.. lord help us..");
+            thePython = [NSString stringWithFormat:@"vc_ptr=%ld\n\n%@",vc_ptr, thePython];
+            PyRun_SimpleString(thePython.UTF8String);
+        }];
+    }
+}
+
 @end
 
