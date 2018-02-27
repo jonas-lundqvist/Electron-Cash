@@ -46,6 +46,7 @@ except Exception as e:
 from electroncash.i18n import _, set_language, languages
 #from electroncash.plugins import run_hook
 from electroncash import WalletStorage, Wallet
+from electroncash.address import Address
 # from electroncash.synchronizer import Synchronizer
 # from electroncash.verifier import SPV
 # from electroncash.util import DebugMem
@@ -56,6 +57,12 @@ from electroncash.util import UserCancelled, print_error, format_satoshis, Print
 # a dummy hard coded wallet with a few tx's in its history for testing
 # encrypted with password 'bchbch'
 hardcoded_testing_wallet = bz2.decompress(base64.b64decode(b'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'))
+
+TAG_PASSWD = 2
+TAG_CASHADDR = 3
+TAG_PREFS = 4
+TAG_SEED = 5
+TAG_NETWORK = 6
 
 def check_imports():
     # pure-python dependencies need to be imported here for pyinstaller
@@ -89,15 +96,25 @@ def check_imports():
 
 class GuiHelper(NSObject):
     updateNeeded = objc_property()
+    butsStatus = objc_property()
+    butsStatusLabel = objc_property()
     butsPasswd = objc_property() # array of buttons, one per tab
     butsCashaddr = objc_property()
+    butsSeed = objc_property()
     butsPrefs = objc_property()
-    butsNetwork = objc_property()
+    butsSend = objc_property()
     
     @objc_method
     def init(self):
         self = ObjCInstance(send_super(self, 'init'))
         self.updateNeeded = False
+        self.butsStatus = []
+        self.butsStatusLabel = []
+        self.butsPasswd = []
+        self.butsCashaddr = []
+        self.butsSeed = []
+        self.butsPrefs = []
+        self.butsSend = []
         heartbeat.Add(self, 'doUpdateIfNeeded')
         return self
     
@@ -105,10 +122,13 @@ class GuiHelper(NSObject):
     def dealloc(self) -> None:
         heartbeat.Remove(self, 'doUpdateIfNeeded')
         self.updateNeeded = None
+        self.butsStatus = None
+        self.butsStatusLabel = None
         self.butsPasswd = None
         self.butsCashaddr = None
+        self.butsSeed = None
         self.butsPrefs = None
-        self.butsNewtwork = None
+        self.butsSend = None
         send_super(self, 'dealloc')
     
     @objc_method
@@ -127,7 +147,9 @@ class GuiHelper(NSObject):
         
     @objc_method
     def onToolButton_(self,but) -> None:
-        print("onToolButton: called with button {}".format(str(but.ptr.value)))
+        print("onToolButton: called with button tag {}".format(str(but.tag)))
+        if ElectrumGui.gui is not None:
+            ElectrumGui.gui.on_tool_button(but)
         
     @objc_method
     def navigationController_willShowViewController_animated_(self, nav, vc, anim : bool) -> None:
@@ -162,9 +184,13 @@ class ElectrumGui(PrintError):
         self.receiveNav = None
         self.addressesNav = None
         self.addressesVC = None
-        self.num_zeros = 3
-        self.decimal_point = 5
-        self.fee_unit = 0
+        
+        self.decimal_point = config.get('decimal_point', 5)
+        self.fee_unit = config.get('fee_unit', 0)
+        self.num_zeros     = int(config.get('num_zeros',3))
+        
+        Address.show_cashaddr(config.get('show_cashaddr', True))
+
         self.history = []
         self.helper = None
         self.helperTimer = None
@@ -217,24 +243,99 @@ class ElectrumGui(PrintError):
             print ("REGISTERED NETWORK CALLBACKS")
 
         tbl.refresh()
-                
+        
+        self.helper.needUpdate()
                 
         print("UI Created Ok")
         
         return True
     
     def setup_toolbar(self):
-        
+        butsStatusLabel = []
+        butsStatus = []
+        butsPasswd = []
+        butsSeed = []
+        butsCashaddr = []
+        butsPrefs = []
         for nav in self.tabController.viewControllers:
-            b = UIBarButtonItem.alloc().initWithBarButtonSystemItem_target_action_(UIBarButtonSystemItemRefresh, self.helper, SEL(b'onToolButton:')).autorelease()
+            itemsThisNav = []
+            # status label
+            l = UILabel.alloc().initWithFrame_(CGRectMake(0,0,UIScreen.mainScreen.bounds.size.width-100,50)).autorelease()
+            l.text = "Electron Cash..."
+            l.adjustsFontSizeToFitWidth = True
+            l.numberOfLines=0
+            l.sizeToFit()
+            b = UIBarButtonItem.alloc().initWithCustomView_(l).autorelease()
+            b.tag = 0
+
+            butsStatusLabel.append(b)
+            itemsThisNav.append(b)
+            
+            # spacer
+            b = UIBarButtonItem.alloc().initWithBarButtonSystemItem_target_action_(UIBarButtonSystemItemFlexibleSpace, None, None)
+            b.tag = 1
+            itemsThisNav.append(b)
+
+            # Locked/Unlocked icon
+            b = UIBarButtonItem.alloc().initWithImage_style_target_action_(UIImage.imageNamed_("unlock.png").imageWithRenderingMode_(UIImageRenderingModeAlwaysOriginal),
+                                                                           UIBarButtonItemStylePlain,
+                                                                           self.helper,
+                                                                           SEL(b'onToolButton:'))
+            b.tag = TAG_PASSWD
+            butsPasswd.append(b)
+            itemsThisNav.append(b)
+
+            # Cashaddr icon
+            b = UIBarButtonItem.alloc().initWithImage_style_target_action_(self.cashaddr_icon(),
+                                                                           UIBarButtonItemStylePlain,
+                                                                           self.helper,
+                                                                           SEL(b'onToolButton:'))
+            b.tag = TAG_CASHADDR
+            butsCashaddr.append(b)
+            itemsThisNav.append(b)
+
+
+            # Seed icon
+            b = UIBarButtonItem.alloc().initWithImage_style_target_action_(UIImage.imageNamed_("seed.png").imageWithRenderingMode_(UIImageRenderingModeAlwaysOriginal),
+                                                                           UIBarButtonItemStylePlain,
+                                                                           self.helper,
+                                                                           SEL(b'onToolButton:'))
+            b.tag = TAG_SEED
+            butsSeed.append(b)
+            itemsThisNav.append(b)
+
+            # Prefs icon
+            b = UIBarButtonItem.alloc().initWithImage_style_target_action_(UIImage.imageNamed_("preferences.png").imageWithRenderingMode_(UIImageRenderingModeAlwaysOriginal),
+                                                                           UIBarButtonItemStylePlain,
+                                                                           self.helper,
+                                                                           SEL(b'onToolButton:'))
+            b.tag = TAG_PREFS
+            butsPrefs.append(b)
+            itemsThisNav.append(b)
+            
+            # status/network icon
+            b = UIBarButtonItem.alloc().initWithImage_style_target_action_(UIImage.imageNamed_("status_disconnected.png").imageWithRenderingMode_(UIImageRenderingModeAlwaysOriginal),
+                                                                           UIBarButtonItemStylePlain,
+                                                                           self.helper,
+                                                                           SEL(b'onToolButton:'))
+            b.tag = TAG_NETWORK
+            butsStatus.append(b)
+            itemsThisNav.append(b)
+            
             root = nav.viewControllers[0] # get root viewcontroller
-            root.setToolbarItems_animated_([b], True)
+            itemsThisNav.sort(key=lambda x: x.tag)
+            root.setToolbarItems_animated_(itemsThisNav, True)
             nav.setToolbarHidden_animated_(False, True)
             # below two cause problems because of our 'persistent toolbar', so disable
             #nav.hidesBarsWhenKeyboardAppears = True
             #nav.hidesBarsWhenVerticallyCompact = True
             nav.delegate = self.helper
- 
+        self.helper.butsStatusLabel = butsStatusLabel
+        self.helper.butsStatus = butsStatus
+        self.helper.butsPasswd = butsPasswd
+        self.helper.butsSeed = butsSeed
+        self.helper.butsCashaddr = butsCashaddr
+        self.helper.butsPrefs = butsPrefs
     
     def destroyUI(self):
         if self.window is None:
@@ -261,7 +362,18 @@ class ElectrumGui(PrintError):
         self.helper = None        
     
     def on_rotated(self): # called by PythonAppDelegate after screen rotation
-        pass
+        #update status bar label width
+        size = UIScreen.mainScreen.bounds.size
+        buts = self.helper.butsStatusLabel
+        for b in buts:
+            f = b.customView.frame
+            if size.width < size.height:
+                f.size.width = size.width/2 - 30
+            else:
+                f.size.width = size.width / 2
+            b.customView.frame = f
+            #b.customView.sizeToFit()
+
 
     
     def init_network(self):
@@ -278,20 +390,23 @@ class ElectrumGui(PrintError):
         print("ON HISTORY (IsMainThread: %s)"%(str(NSThread.currentThread.isMainThread)))
         assert self.historyVC is not None
         self.historyVC.needUpdate()
+        self.helper.needUpdate()
         
     def on_quotes(self, event, *args):
         print("ON QUOTES (IsMainThread: %s)"%(str(NSThread.currentThread.isMainThread)))        
         self.historyVC.needUpdate()
         self.addressesVC.needUpdate()
+        self.helper.needUpdate()
             
     def on_network(self, event, *args):
         print ("ON NETWORK: %s (IsMainThread: %s)"%(event,str(NSThread.currentThread.isMainThread)))
         assert self.historyVC is not None
         if event == 'updated':
-            pass
+            self.helper.needUpdate()
         elif event == 'new_transaction':
             self.historyVC.needUpdate() #enqueue update to main thread
             self.addressesVC.needUpdate() #enqueue update to main thread
+            self.helper.needUpdate()
         elif event == 'banner':
             #todo: handle console stuff here
             pass
@@ -301,6 +416,7 @@ class ElectrumGui(PrintError):
         elif event in ['verified']:
             self.historyVC.needUpdate() #enqueue update to main thread
             self.addressesVC.needUpdate()
+            self.helper.needUpdate()
         elif event == 'fee':
             # todo: handle fee stuff here
             pass
@@ -309,7 +425,145 @@ class ElectrumGui(PrintError):
             
     def on_status_update(self):
         print ("ON STATUS UPDATE (IsMainThread: %s)"%(str(NSThread.currentThread.isMainThread)))
+        if not self.wallet:
+            return
 
+        if self.daemon.network is None or not self.daemon.network.is_running():
+            text = _("Offline")
+            icon = "status_disconnected.png"
+
+        elif self.daemon.network.is_connected():
+            server_height = self.daemon.network.get_server_height()
+            server_lag = self.daemon.network.get_local_height() - server_height
+            # Server height can be 0 after switching to a new server
+            # until we get a headers subscription request response.
+            # Display the synchronizing message in that case.
+            if not self.wallet.up_to_date or server_height == 0:
+                text = _("Synchronizing...")
+                icon = "status_waiting.png"
+            elif server_lag > 1:
+                text = _("Server is lagging ({} blocks)").format(server_lag)
+                icon = "status_lagging.png"
+            else:
+                c, u, x = self.wallet.get_balance()
+                text =  _("Balance" ) + ": %s "%(self.format_amount_and_units(c))
+                if u:
+                    text +=  " [%s unconfirmed]"%(self.format_amount(u, True).strip())
+                if x:
+                    text +=  " [%s unmatured]"%(self.format_amount(x, True).strip())
+
+                # append fiat balance and price
+                if self.daemon.fx.is_enabled():
+                    text += self.daemon.fx.get_fiat_status_text(c + u + x,
+                        self.base_unit(), self.get_decimal_point()) or ''
+                if not self.daemon.network.proxy:
+                    icon = "status_connected.png"
+                else:
+                    icon = "status_connected_proxy.png"
+        else:
+            text = _("Not connected")
+            icon = "status_disconnected.png"
+
+        #self.tray.setToolTip("%s (%s)" % (text, self.wallet.basename()))
+        #self.balance_label.setText(text)
+        #self.status_button.setIcon( icon )
+        lbls = self.helper.butsStatusLabel
+        buts = self.helper.butsStatus
+        for l in lbls:
+            l.customView.text = text
+        img = UIImage.imageNamed_(icon).imageWithRenderingMode_(UIImageRenderingModeAlwaysOriginal)
+        for b in buts:
+            b.setImage_(img)
+            
+        self.update_lock_icon()
+        self.update_buttons_on_seed()
+        
+    def update_lock_icon(self):
+        img = UIImage.imageNamed_("lock.png" if self.wallet.has_password() else "unlock.png").imageWithRenderingMode_(UIImageRenderingModeAlwaysOriginal)
+        buts = self.helper.butsPasswd
+        for b in buts:
+            b.setImage_(img)
+        
+
+    def update_buttons_on_seed(self):
+        def removeBut(but,vcidx):
+            nav = self.tabController.viewControllers[vcidx]
+            root = nav.viewControllers[0]
+            itemsThisNav = root.toolbarItems
+            itemsThisNav = [x for x in itemsThisNav if x.tag != but.tag]
+            root.setToolbarItems_animated_(itemsThisNav, True)
+        def addBut(but,vcidx):
+            nav = self.tabController.viewControllers[vcidx]
+            root = nav.viewControllers[0]
+            itemsThisNav = root.toolbarItems
+            if but not in itemsThisNav:
+                itemsThisNav.insert(but.tag,but)
+                root.setToolbarItems_animated_(itemsThisNav, True)
+
+        buts = self.helper.butsSeed
+        for i,b in enumerate(buts):
+            b.enabled = self.wallet.has_seed()
+            if not b.isEnabled():
+                removeBut(b,i)
+            else:
+                addBut(b,i)
+        buts = self.helper.butsPasswd
+        for i,b in enumerate(buts):
+            b.enabled = self.wallet.can_change_password()
+            if not b.isEnabled():
+                removeBut(b,i)
+            else:
+                addBut(b,i)
+        buts = self.helper.butsSend
+        for i,b in enumerate(buts): # todo: implement send button tracking?
+            b.enabled = not self.wallet.is_warching_only()
+            if not b.isEnabled():
+                removeBut(b,i)
+            else:
+                addBut(b,i)
+        #self.seed_button.setVisible(self.wallet.has_seed())
+        #self.password_button.setVisible(self.wallet.can_change_password())
+        #self.send_button.setVisible(not self.wallet.is_watching_only())
+
+    def on_tool_button(self, but : ObjCInstance) -> None:
+        if but.tag == TAG_NETWORK: # status button
+            print("Network status button pushed.. TODO, implement...")
+        elif but.tag == TAG_PASSWD:
+            print("Password lock button pushed.. TODO, implement...")
+        elif but.tag == TAG_SEED:
+            print("Seed button pushed.. TODO, implement...")
+        elif but.tag == TAG_PREFS:
+            print("Prefs button pushed.. TODO, implement...")
+        elif but.tag == TAG_CASHADDR:
+            print("CashAddr button pushed.. TODO, implement...")
+            self.toggle_cashaddr_status_bar()
+        else:
+            print("Unknown button pushed, tag=%d"%int(but.tag))
+  
+    def cashaddr_icon(self):
+        imgname = "addr_converter_bw.png"
+        if self.config.get('show_cashaddr', True):
+            imgname = "addr_converter.png"
+        return UIImage.imageNamed_(imgname).imageWithRenderingMode_(UIImageRenderingModeAlwaysOriginal) 
+
+    def update_cashaddr_icon(self):
+        buts = self.helper.butsCashaddr
+        img = self.cashaddr_icon()
+        for b in buts:
+            b.setImage_(img)
+
+    def toggle_cashaddr_status_bar(self):
+        self.toggle_cashaddr(not self.config.get('show_cashaddr', True))
+
+    def toggle_cashaddr(self, on):
+        self.config.set_key('show_cashaddr', on)
+        self.update_cashaddr_icon()
+        Address.show_cashaddr(on)
+        self.historyVC.needUpdate()
+        self.addressesVC.needUpdate()
+        #for window in self.gui_object.windows:
+        #    window.cashaddr_toggled_signal.emit()
+      
     @staticmethod
     def prompt_password(prmpt, dummy=0):
         print("prompt_password(%s,%s) thread=%s mainThread?=%s"%(prmpt,str(dummy),NSThread.currentThread.description,str(NSThread.currentThread.isMainThread)))
@@ -360,6 +614,14 @@ class ElectrumGui(PrintError):
     def format_amount(self, x, is_diff=False, whitespaces=False):
         return format_satoshis(x, is_diff, self.num_zeros, self.decimal_point, whitespaces)
 
+    def format_amount_and_units(self, amount, usenl=False):
+        text = self.format_amount(amount) + ' '+ self.base_unit()
+        x = self.daemon.fx.format_amount_and_units(amount)
+        if text and x:
+            text += "\n" if usenl else ''
+            text += ' (%s)'%x
+        return text
+
     def format_fee_rate(self, fee_rate):
         if self.fee_unit == 0:
             return '{:.2f} sats/byte'.format(fee_rate/1000)
@@ -375,7 +637,10 @@ class ElectrumGui(PrintError):
         if self.decimal_point == 8:
             return 'BCH'
         raise Exception('Unknown base unit')
-    
+
+    def get_decimal_point(self):
+        return self.decimal_point
+   
     def on_label_edited(self, key, newvalue):
         self.wallet.set_label(key, newvalue)
         self.wallet.storage.write()

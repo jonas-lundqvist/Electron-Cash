@@ -253,6 +253,17 @@ UIBarButtonSystemItemFastForward = 20
 UIBarButtonSystemItemUndo = 21
 UIBarButtonSystemItemRedo = 22
 UIBarButtonSystemItemPageCurl = 23
+#UIBarButtonItemStyle
+UIBarButtonItemStylePlain = 0
+UIBarButtonItemStyleBordered = 1
+UIBarButtonItemStyleDone = 2
+#UIBarMetrics
+UIBarMetricsDefault = 0
+UIBarMetricsCompact = 1
+UIBarMetricsDefaultPrompt = 101 #// Applicable only in bars with the prompt property, such as UINavigationBar and UISearchBar
+UIBarMetricsCompactPrompt = 102
+UIBarMetricsLandscapePhone = UIBarMetricsCompact # NS_ENUM_DEPRECATED_IOS(5_0, 8_0, "Use UIBarMetricsCompact instead") = UIBarMetricsCompact,
+UIBarMetricsLandscapePhonePrompt = UIBarMetricsCompactPrompt #NS_ENUM_DEPRECATED_IOS(7_0, 8_0, "Use UIBarMetricsCompactPrompt") = UIBarMetricsCompactPrompt,
 
 #UIBarStyle
 UIBarStyleDefault = 0
