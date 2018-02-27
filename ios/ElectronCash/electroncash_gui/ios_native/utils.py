@@ -161,6 +161,8 @@ def do_in_main_thread(func : callable, *args) -> None:
 # sometime in the future.
 # Note: unlike the other functions above -- this *can* be used from any thread and the callback will always
 #       run in the Main Thead!  This is useful for calling into the GUI from a separate thread, for example.
+# NB: ok, so it turns out, after some testing, it doesn't appear to always be safe to call this from other threads
+#     TODO: figure out why
 calllater_table = {}
 def call_later(timeout : float, func : callable, *args) -> None:
     python = '''
