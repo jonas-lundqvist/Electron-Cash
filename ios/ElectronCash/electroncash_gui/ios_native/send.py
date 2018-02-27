@@ -90,7 +90,7 @@ class SendVC(UIViewController):
         but = self.view.viewWithTag_(1110)
         but.setTitle_forState_(_("Preview"), UIControlStateNormal)
         
-        but = self.view.viewWithTag_(1110)
+        but = self.view.viewWithTag_(1120)
         but.setTitle_forState_(_("Send"), UIControlStateNormal)
 
         #tedit = self.view.viewWithTag_(230)
