@@ -514,17 +514,11 @@ class ElectrumGui(PrintError):
                 removeBut(b,i)
             else:
                 addBut(b,i)
+        # todo -- register all send buttons here?
         buts = self.helper.butsSend
         for i,b in enumerate(buts): # todo: implement send button tracking?
-            b.enabled = not self.wallet.is_warching_only()
-            if not b.isEnabled():
-                removeBut(b,i)
-            else:
-                addBut(b,i)
-        #self.seed_button.setVisible(self.wallet.has_seed())
-        #self.password_button.setVisible(self.wallet.can_change_password())
-        #self.send_button.setVisible(not self.wallet.is_watching_only())
-
+            b.enabled = not self.wallet.is_watching_only()
+ 
     def on_tool_button(self, but : ObjCInstance) -> None:
         if but.tag == TAG_NETWORK: # status button
             print("Network status button pushed.. TODO, implement...")
