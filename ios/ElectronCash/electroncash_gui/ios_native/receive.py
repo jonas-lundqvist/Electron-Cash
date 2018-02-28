@@ -6,12 +6,7 @@ from electroncash.util import timestamp_to_datetime
 from electroncash.i18n import _, language
 import time
 import html
-
-try:
-    from .uikit_bindings import *
-except Exception as e:
-    sys.exit("Error: Could not import iOS libs: %s"%str(e))
-
+from .uikit_bindings import *
 
 class ReceiveVC(UIViewController):
     stuff = objc_property() # an NSArray of stuff to display

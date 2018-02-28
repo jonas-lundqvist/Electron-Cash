@@ -45,6 +45,10 @@ def get_fn_and_ext(fileName: str) -> tuple:
         fn = '.'.join(p1) 
     return (fn,ext)
 
+def uiview_set_enabled(view : ObjCInstance, b : bool) -> None:
+    view.userInteractionEnabled = b
+    view.alpha = float(1.0 if b else 0.3)
+
 # NB: This isn't normally called since you need to specify the full pathname of the resource you want, instead
 #     if you need images, call uiimage_get, etc.  This does NOT search recursively, since NSBundle sucks.
 def get_bundle_resource_path(fileName: str, directory: str = None) -> str:

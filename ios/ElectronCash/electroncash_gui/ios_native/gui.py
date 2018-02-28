@@ -31,17 +31,19 @@ import bz2
 import base64
 import time
 from datetime import datetime
+from decimal import Decimal
+try:
+    from .uikit_bindings import *
+except Exception as e:
+    sys.exit("Error: Could not import iOS libs: %s"%str(e))
 from . import heartbeat
 from . import utils
 from . import history
 from . import addresses
 from . import send
 from . import receive
-
-try:
-    from .uikit_bindings import *
-except Exception as e:
-    sys.exit("Error: Could not import iOS libs: %s"%str(e))
+from . import prefs
+from .custom_objc import *
 
 from electroncash.i18n import _, set_language, languages
 #from electroncash.plugins import run_hook
@@ -50,7 +52,7 @@ from electroncash.address import Address
 # from electroncash.synchronizer import Synchronizer
 # from electroncash.verifier import SPV
 # from electroncash.util import DebugMem
-from electroncash.util import UserCancelled, print_error, format_satoshis, PrintError, timestamp_to_datetime
+from electroncash.util import UserCancelled, print_error, format_satoshis, format_satoshis_plain, PrintError, timestamp_to_datetime
 
 # from electroncash.wallet import Abstract_Wallet
 
@@ -150,6 +152,11 @@ class GuiHelper(NSObject):
         print("onToolButton: called with button tag {}".format(str(but.tag)))
         if ElectrumGui.gui is not None:
             ElectrumGui.gui.on_tool_button(but)
+            
+    @objc_method
+    def onModalClose_(self,but) -> None:
+        if ElectrumGui.gui is not None:
+            ElectrumGui.gui.on_modal_close(but)
         
     @objc_method
     def navigationController_willShowViewController_animated_(self, nav, vc, anim : bool) -> None:
@@ -184,6 +191,8 @@ class ElectrumGui(PrintError):
         self.receiveNav = None
         self.addressesNav = None
         self.addressesVC = None
+        self.prefsVC = None
+        self.prefsNav = None
         
         self.decimal_point = config.get('decimal_point', 5)
         self.fee_unit = config.get('fee_unit', 0)
@@ -241,6 +250,11 @@ class ElectrumGui(PrintError):
             # partials, lambdas or methods of subobjects.  Hence...
             self.daemon.network.register_callback(self.on_network, interests)
             print ("REGISTERED NETWORK CALLBACKS")
+
+        self.prefsVC = prefs.PrefsVC.new()
+        self.prefsNav = UINavigationController.alloc().initWithRootViewController_(self.prefsVC)
+        self.prefsVC.closeButton = UIBarButtonItem.alloc().initWithBarButtonSystemItem_target_action_(UIBarButtonSystemItemStop, self.helper, SEL(b'onModalClose:')).autorelease()
+        self.prefsVC.navigationItem.rightBarButtonItem = self.prefsVC.closeButton
 
         tbl.refresh()
         
@@ -340,6 +354,10 @@ class ElectrumGui(PrintError):
     def destroyUI(self):
         if self.window is None:
             return
+        self.prefsVC.autorelease()
+        self.prefsNav.autorelease()
+        self.prefsVC = None
+        self.prefsNav = None
         self.daemon.network.unregister_callback(self.on_history)
         self.daemon.network.unregister_callback(self.on_network)
         if self.helperTimer is not None:
@@ -527,13 +545,24 @@ class ElectrumGui(PrintError):
         elif but.tag == TAG_SEED:
             print("Seed button pushed.. TODO, implement...")
         elif but.tag == TAG_PREFS:
-            print("Prefs button pushed.. TODO, implement...")
+            print("Prefs button pushed")
+            # for iOS8.0+ API which uses Blocks, but rubicon blocks seem buggy so we must do this
+            HelpfulGlue.viewController_presentModalViewController_animated_python_(self.tabController,self.prefsNav,True,None)
         elif but.tag == TAG_CASHADDR:
-            print("CashAddr button pushed.. TODO, implement...")
+            print("CashAddr button pushed.. TODO, implement fully...")
             self.toggle_cashaddr_status_bar()
         else:
             print("Unknown button pushed, tag=%d"%int(but.tag))
-  
+            
+    def on_modal_close(self, but : ObjCInstance) -> None:
+        title = "UNKNOWN View Controller"
+        try: 
+            presented = self.tabController.presentedViewController
+            title = py_from_ns(presented.visibleViewController.title)
+        except:
+            pass
+        HelpfulGlue.viewController_dismissModalViewControllerAnimated_python_(self.tabController,True,'print("Modal \'%s\' was dismissed")'%title)
+        
     def cashaddr_icon(self):
         imgname = "addr_converter_bw.png"
         if self.config.get('show_cashaddr', True):
@@ -657,6 +686,59 @@ class ElectrumGui(PrintError):
                         break
             print ("Setting language to {}".format(l))
             set_language(l)
+            
+    def prefs_get_show_fee(self) -> bool:
+        return self.config.get('show_fee', False)
+    
+    def prefs_set_show_fee(self, b : bool) -> None:
+        self.config.set_key('show_fee', bool(b))
+        
+    def prefs_get_max_fee_rate(self) -> float:
+        return self.config.max_fee_rate()
+
+    def prefs_set_max_fee_rate(self, r) -> float:
+        amt = self.validate_amount(r)
+        if amt is not None:
+            amt = float(format_satoshis_plain(amt, self.decimal_point))
+            self.config.set_key('max_fee_rate', amt)
+        return self.prefs_get_max_fee_rate()
+    
+    def prefs_get_confirmed_only(self) -> bool:
+        return bool(self.config.get('confirmed_only', False))
+    
+    def prefs_set_confirmed_only(self, b : bool) -> None:
+        self.config.set_key('confirmed_only', bool(b))
+        
+    def prefs_get_use_change(self) -> tuple: # returns the setting plus a second bool that indicates whether this setting can be modified
+        r1 = self.wallet.use_change
+        r2 = self.config.is_modifiable('use_change')
+        return r1, r2
+
+    def prefs_set_use_change(self, x : bool) -> None:
+        usechange_result = bool(x)
+        if self.wallet.use_change != usechange_result:
+            self.wallet.use_change = usechange_result
+            self.wallet.storage.put('use_change', self.wallet.use_change)        
+   
+    def prefs_get_multiple_change(self) -> list:
+        multiple_change = self.wallet.multiple_change
+        enabled = self.wallet.use_change
+        return multiple_change, enabled
+
+    def prefs_set_multiple_change(self, x : bool) -> None:
+        multiple = bool(x)
+        if self.wallet.multiple_change != multiple:
+            self.wallet.multiple_change = multiple
+            self.wallet.storage.put('multiple_change', multiple)
+        
+    
+    def validate_amount(self, text):
+        try:
+            x = Decimal(str(text))
+        except:
+            return None
+        p = pow(10, self.decimal_point)
+        return int( p * x ) if x > 0 else None
 
 
     # this method is called by Electron Cash libs to start the GUI
