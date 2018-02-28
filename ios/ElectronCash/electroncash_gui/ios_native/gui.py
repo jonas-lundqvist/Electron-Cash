@@ -196,9 +196,9 @@ class ElectrumGui(PrintError):
         
         self.decimal_point = config.get('decimal_point', 5)
         self.fee_unit = config.get('fee_unit', 0)
-        self.num_zeros     = int(config.get('num_zeros',3))
+        self.num_zeros     = self.prefs_get_num_zeros()
         
-        Address.show_cashaddr(config.get('show_cashaddr', True))
+        Address.show_cashaddr(self.prefs_get_use_cashaddr())
 
         self.history = []
         self.helper = None
@@ -565,7 +565,7 @@ class ElectrumGui(PrintError):
         
     def cashaddr_icon(self):
         imgname = "addr_converter_bw.png"
-        if self.config.get('show_cashaddr', True):
+        if self.prefs_get_use_cashaddr():
             imgname = "addr_converter.png"
         return UIImage.imageNamed_(imgname).imageWithRenderingMode_(UIImageRenderingModeAlwaysOriginal) 
 
@@ -576,17 +576,18 @@ class ElectrumGui(PrintError):
             b.setImage_(img)
 
     def toggle_cashaddr_status_bar(self):
-        self.toggle_cashaddr(not self.config.get('show_cashaddr', True))
+        self.toggle_cashaddr(not self.prefs_get_use_cashaddr())
 
-    def toggle_cashaddr(self, on):
+    def toggle_cashaddr(self, on : bool) -> None:
         self.config.set_key('show_cashaddr', on)
         self.update_cashaddr_icon()
         Address.show_cashaddr(on)
         self.historyVC.needUpdate()
         self.addressesVC.needUpdate()
+        self.prefsVC.refresh()
         #for window in self.gui_object.windows:
         #    window.cashaddr_toggled_signal.emit()
-      
+              
     @staticmethod
     def prompt_password(prmpt, dummy=0):
         print("prompt_password(%s,%s) thread=%s mainThread?=%s"%(prmpt,str(dummy),NSThread.currentThread.description,str(NSThread.currentThread.isMainThread)))
@@ -694,12 +695,11 @@ class ElectrumGui(PrintError):
         self.config.set_key('show_fee', bool(b))
         
     def prefs_get_max_fee_rate(self) -> float:
-        return self.config.max_fee_rate()
+        return  float(format_satoshis_plain(self.config.max_fee_rate(), self.decimal_point))
 
     def prefs_set_max_fee_rate(self, r) -> float:
         amt = self.validate_amount(r)
         if amt is not None:
-            amt = float(format_satoshis_plain(amt, self.decimal_point))
             self.config.set_key('max_fee_rate', amt)
         return self.prefs_get_max_fee_rate()
     
@@ -730,8 +730,36 @@ class ElectrumGui(PrintError):
         if self.wallet.multiple_change != multiple:
             self.wallet.multiple_change = multiple
             self.wallet.storage.put('multiple_change', multiple)
-        
     
+    def prefs_get_use_cashaddr(self) -> bool:
+        return bool(self.config.get('show_cashaddr', True))
+    
+    def prefs_set_decimal_point(self, dec: int) -> None:
+        if dec in [2, 5, 8]:
+            if dec == self.decimal_point:
+                return
+            self.decimal_point = dec
+            self.config.set_key('decimal_point', self.decimal_point, True)
+            self.historyVC.needUpdate()
+            self.addressesVC.needUpdate()
+            self.helper.needUpdate()
+            self.prefsVC.refresh()
+            print("Decimal point set to: %d"%dec)
+        else:
+            raise ValueError('Passed-in decimal point %s is not one of [2,5,8]'%str(dec))
+        
+    def prefs_get_num_zeros(self) -> int:
+        return int(self.config.get('num_zeros', 2))
+        
+    def prefs_set_num_zeros(self, nz : int) -> None:
+        value = int(nz)
+        if self.num_zeros != value:
+            self.num_zeros = value
+            self.config.set_key('num_zeros', value, True)
+            self.historyVC.needUpdate()
+            self.addressesVC.needUpdate()
+            self.helper.needUpdate()
+
     def validate_amount(self, text):
         try:
             x = Decimal(str(text))

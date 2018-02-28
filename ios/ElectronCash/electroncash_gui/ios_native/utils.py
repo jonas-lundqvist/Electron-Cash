@@ -46,6 +46,7 @@ def get_fn_and_ext(fileName: str) -> tuple:
     return (fn,ext)
 
 def uiview_set_enabled(view : ObjCInstance, b : bool) -> None:
+    if view is None: return
     view.userInteractionEnabled = b
     view.alpha = float(1.0 if b else 0.3)
 
