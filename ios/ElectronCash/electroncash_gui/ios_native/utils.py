@@ -177,10 +177,13 @@ if u.calllater_table.get(timer_ptr):
     f = u.calllater_table[timer_ptr][0]
     if f is not None:
         argz = u.calllater_table[timer_ptr][1:]
-        f(*argz)
+        try:
+            f(*argz)
+        except Exception as e:
+            print("ERROR in Python Eval for call_later: '%s'"%(str(e)))
     del u.calllater_table[timer_ptr]
 '''
     global calllater_table
-    ptr =  HelpfulGlue.evalPython_afterDelay_(python,timeout,True)
+    ptr =  HelpfulGlue.evalPython_afterDelay_(python,timeout)
     calllater_table[ptr] = [func,*args]
 

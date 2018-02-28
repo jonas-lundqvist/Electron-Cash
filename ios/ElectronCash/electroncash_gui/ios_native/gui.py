@@ -540,10 +540,13 @@ class ElectrumGui(PrintError):
     def on_tool_button(self, but : ObjCInstance) -> None:
         if but.tag == TAG_NETWORK: # status button
             print("Network status button pushed.. TODO, implement...")
+            utils.show_timed_alert(self.tabController,"UNIMPLEMENTED", "Network setup dialog unimplemented -- coming soon!", 2.0)
         elif but.tag == TAG_PASSWD:
             print("Password lock button pushed.. TODO, implement...")
+            utils.show_timed_alert(self.tabController,"UNIMPLEMENTED", "Password/lock dialog unimplemented -- coming soon!", 2.0)
         elif but.tag == TAG_SEED:
             print("Seed button pushed.. TODO, implement...")
+            utils.show_timed_alert(self.tabController,"UNIMPLEMENTED", "Seed dialog unimplemented -- coming soon!", 2.0)
         elif but.tag == TAG_PREFS:
             print("Prefs button pushed")
             # for iOS8.0+ API which uses Blocks, but rubicon blocks seem buggy so we must do this
@@ -767,7 +770,12 @@ class ElectrumGui(PrintError):
             return None
         p = pow(10, self.decimal_point)
         return int( p * x ) if x > 0 else None
-
+    
+    def refresh_all(self):
+        self.helper.needUpdate()
+        self.historyVC.needUpdate()
+        self.addressesVC.needUpdate()
+        self.prefsVC.refresh()
 
     # this method is called by Electron Cash libs to start the GUI
     def main(self):       

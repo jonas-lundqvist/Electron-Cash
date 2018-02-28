@@ -18,6 +18,8 @@ TAG_CONTENTVIEW = 100
 TAG_BASE_UNIT = 302
 TAG_NZ = 303
 TAG_BLOCK_EXPLORER = 304
+TAG_FIAT_CURRENCY = 401
+TAG_FIAT_EXCHANGE = 404
 
 UNITS = { 'BCH': 8, 'mBCH': 5, 'bits' : 2}
 UNIT_KEYS = list(UNITS.keys())
@@ -27,12 +29,19 @@ UNIT_KEYS.sort(key=lambda x: UNITS[x],reverse=True)
 class PrefsVC(UITableViewController):
     
     closeButton = objc_property() # caller sets this
+    
+    currencies = objc_property() # NSArray of strings...
+    exchanges = objc_property() # NSArray of strings...
         
     @objc_method
     def init(self) -> ObjCInstance:
         self = ObjCInstance(send_super(self, 'initWithStyle:', UITableViewStyleGrouped, argtypes=[c_int]))
         self.title = _("Preferences")
         self.closeButton = None
+        self.currencies = None
+        self.exchanges = None
+        self.updateCurrencies()
+        self.updateExchanges()
         return self
     
     @objc_method
@@ -44,6 +53,8 @@ class PrefsVC(UITableViewController):
     @objc_method
     def dealloc(self) -> None:
         self.closeButton = None
+        self.currencies = None
+        self.exchanges = None
         send_super(self, 'dealloc')
 
     @objc_method
@@ -59,10 +70,13 @@ class PrefsVC(UITableViewController):
         except:
             pass
         if self.viewIfLoaded is not None:
+            self.updateCurrencies()
+            self.updateExchanges()
             self.tableView.reloadData()
 
     @objc_method
     def viewDidAppear_(self, animated : bool) -> None:
+        '''
         cell = self.multipleChangeCell()
         if cell is None:
             print("WARNING: multipleChanceCell could not be polished! FIXME!")
@@ -70,9 +84,48 @@ class PrefsVC(UITableViewController):
         parent = gui.ElectrumGui.gui
         b1, enabled = parent.prefs_get_multiple_change()
         utils.uiview_set_enabled(cell, enabled)
-    
+        '''
+        # do polish here?
         send_super(self,'viewDidAppear:', animated, arg_types=[c_bool])
 
+    @objc_method
+    def updateCurrencies(self):
+        parent = gui.ElectrumGui.gui
+        self.currencies = [_('None')]
+        if not parent.daemon.fx: return
+        self.currencies = [self.currencies[0],*sorted(parent.daemon.fx.get_currencies(parent.daemon.fx.get_history_config()))]
+
+    @objc_method
+    def updateExchanges(self):
+        parent = gui.ElectrumGui.gui
+        fx = parent.daemon.fx
+        self.exchanges = []
+        if not fx: return
+        b = fx.is_enabled()
+        #ex_combo.setEnabled(b)
+        if b:
+            h = fx.get_history_config()
+            c = fx.get_currency()
+            self.exchanges = fx.get_exchanges_by_ccy(c, h)
+        else:
+            self.exchanges = fx.get_exchanges_by_ccy('USD', False)
+        #ex_combo.clear()
+        #ex_combo.addItems(sorted(exchanges))
+        #ex_combo.setCurrentIndex(ex_combo.findText(self.fx.config_exchange()))
+
+        '''
+        def update_history_cb():
+            if not self.fx: return
+            hist_checkbox.setChecked(self.fx.get_history_config())
+            hist_checkbox.setEnabled(self.fx.is_enabled())
+
+        def update_fiat_address_cb():
+            if not self.fx: return
+            fiat_address_checkbox.setChecked(self.fx.get_fiat_address_config())
+
+        '''
+    
+    ## TableView methods below...   
     @objc_method
     def numberOfSectionsInTableView_(self, tableView) -> int:
         return len(SECTION_TITLES)
@@ -92,8 +145,8 @@ class PrefsVC(UITableViewController):
             return 3
         elif secName == 'Appearance':
             return 4
-        #elif secName == 'Fiat':
-        #    return 4
+        elif secName == 'Fiat':
+            return 4
         return 0
 
     @objc_method
@@ -112,6 +165,7 @@ class PrefsVC(UITableViewController):
     def setupCell_section_row_(self, cell : ObjCInstance, secName_oc : ObjCInstance, row : int) -> None:
         secName = py_from_ns(secName_oc)
         parent = gui.ElectrumGui.gui
+        fx = parent.daemon.fx
         cell.tag = 0
         cell.contentView.tag = TAG_CONTENTVIEW
         if secName == 'Fees':
@@ -146,8 +200,7 @@ class PrefsVC(UITableViewController):
                 b1, enabled = parent.prefs_get_multiple_change()
                 s.on = b1
                 # for some reason this needs to be called later, not here during setup :/
-                # we opted to do it in viewDidAppear: method since that's safer than this call_later callback mechanism which sometimes crashes
-                #utils.call_later(0.500, lambda : utils.uiview_set_enabled(self.multipleChangeCell(), enabled))
+                utils.call_later(0.500, lambda : utils.uiview_set_enabled(self.multipleChangeCell(), enabled))
                 #utils.uiview_set_enabled(self.multipleChangeCell(), enabled)
                 s.addTarget_action_forControlEvents_(self, SEL(b'onUseMultiple:'), UIControlEventValueChanged)
             elif row == 2:
@@ -164,6 +217,7 @@ class PrefsVC(UITableViewController):
             elif row == 1:
                 l = cell.viewWithTag_(1)
                 p = cell.viewWithTag_(2)
+                p = p if p is not None else cell.viewWithTag_(TAG_NZ)
                 l.text = _('Zeros after decimal point')
                 if p is not None:
                     p.dataSource = self
@@ -177,6 +231,7 @@ class PrefsVC(UITableViewController):
             elif row == 2:
                 l = cell.viewWithTag_(1)
                 p = cell.viewWithTag_(2)
+                p = p if p is not None else cell.viewWithTag_(TAG_BASE_UNIT)
                 l.text = _('Base unit')
                 if p is not None:
                     p.dataSource = self
@@ -190,11 +245,54 @@ class PrefsVC(UITableViewController):
             elif row == 3:
                 l = cell.viewWithTag_(1)
                 p = cell.viewWithTag_(2)
+                p = p if p is not None else cell.viewWithTag_(TAG_BASE_BLOCK_EXPLORER)
                 l.text = _('Online Block Explorer')
                 if p is not None:
                     p.dataSource = self
                     p.delegate = self
                     p.tag = TAG_BLOCK_EXPLORER
+        elif secName == 'Fiat':
+            if row == 0:
+                l = cell.viewWithTag_(1)
+                p = cell.viewWithTag_(2)
+                p = p if p is not None else cell.viewWithTag_(TAG_FIAT_CURRENCY)
+                l.text = _('Fiat currency')
+                if p is not None:
+                    p.dataSource = self
+                    p.delegate = self
+                    p.tag = TAG_FIAT_CURRENCY
+                    if fx.is_enabled():
+                        curr = fx.get_currency()
+                        currs = py_from_ns(self.currencies)
+                        idx = [i for i,v in enumerate(currs) if v == curr]
+                        idx = 0 if len(idx) <= 0 else idx[0]
+                        if idx > 0: p.selectRow_inComponent_animated_(idx, 0, False)               
+            elif row == 1:
+                l = cell.viewWithTag_(1)
+                s = cell.viewWithTag_(2)
+                l.text = _('Show history rates')
+                s.on = bool(fx and fx.get_history_config())
+                s.addTarget_action_forControlEvents_(self, SEL(b'onFiatHistory:'), UIControlEventValueChanged)
+            elif row == 2:
+                l = cell.viewWithTag_(1)
+                s = cell.viewWithTag_(2)
+                l.text = _('Show Fiat balance for addresses')
+                s.on = bool(fx and fx.get_fiat_address_config())
+                s.addTarget_action_forControlEvents_(self, SEL(b'onFiatBal:'), UIControlEventValueChanged)
+            elif row == 3:
+                l = cell.viewWithTag_(1)
+                p = cell.viewWithTag_(2)
+                p = p if p is not None else cell.viewWithTag_(TAG_FIAT_EXCHANGE)
+                l.text = _('Source')
+                if p is not None:
+                    p.dataSource = self
+                    p.delegate = self
+                    p.tag = TAG_FIAT_EXCHANGE
+                    ex = fx.config_exchange() if fx else 'None'
+                    exs = self.exchanges
+                    idx = [i for i,v in enumerate(exs) if v == ex]
+                    idx = 0 if len(idx) <= 0 else idx[0]
+                    if len(exs) and idx > 0: p.selectRow_inComponent_animated_(idx, 0, False)               
             
                 
     @objc_method
@@ -203,7 +301,7 @@ class PrefsVC(UITableViewController):
         ident = ("%s_%d"%(secName,row))
         cell = None
         
-        if ident in ['Fees_1', 'Transactions_0', 'Transactions_1', 'Transactions_2', 'Appearance_0']:
+        if ident in ['Fees_1', 'Transactions_0', 'Transactions_1', 'Transactions_2', 'Appearance_0', 'Fiat_1', 'Fiat_2']:
             objs = NSBundle.mainBundle.loadNibNamed_owner_options_("BoolCell",self.tableView,None)
             assert objs is not None and len(objs)
             cell = objs[0] 
@@ -211,7 +309,7 @@ class PrefsVC(UITableViewController):
             objs = NSBundle.mainBundle.loadNibNamed_owner_options_("TFCell",self.tableView,None)
             assert objs is not None and len(objs)
             cell = objs[0]
-        elif ident in ['Appearance_1', 'Appearance_2', 'Appearance_3']:
+        elif ident in ['Appearance_1', 'Appearance_2', 'Appearance_3', 'Fiat_0', 'Fiat_3']:
             objs = NSBundle.mainBundle.loadNibNamed_owner_options_("PickerCell",self.tableView,None)
             assert objs is not None and len(objs)
             cell = objs[0]
@@ -238,6 +336,8 @@ class PrefsVC(UITableViewController):
         if p.tag == TAG_BASE_UNIT: return len(UNIT_KEYS)
         elif p.tag == TAG_NZ: return min(parent.get_decimal_point(), 8) + 1
         elif p.tag == TAG_BLOCK_EXPLORER: return len(web.BE_sorted_list())
+        elif p.tag == TAG_FIAT_CURRENCY: return len(self.currencies)
+        elif p.tag == TAG_FIAT_EXCHANGE: return len(self.exchanges)
         else: raise ValueError('Unknown pickerView tag: {}'.format(int(p.tag)))
         return 0
     @objc_method
@@ -251,26 +351,42 @@ class PrefsVC(UITableViewController):
         elif p.tag == TAG_NZ:
             parent.prefs_set_num_zeros(row)
         elif p.tag == TAG_BLOCK_EXPLORER:
-            pass
-        
+            be = web.BE_sorted_list()[row]
+            parent.config.set_key('block_explorer', be, True)
+        elif p.tag == TAG_FIAT_CURRENCY:
+            is_en = bool(row)
+            ccy = self.currencies[row] if is_en else None
+            parent.daemon.fx.set_enabled(is_en)
+            need_refresh = ccy != parent.daemon.fx.ccy
+            if is_en and ccy is not None and ccy != parent.daemon.fx.ccy:
+                parent.daemon.fx.set_currency(ccy)
+            if need_refresh: parent.refresh_all()
+        elif p.tag == TAG_FIAT_EXCHANGE:
+            fx = parent.daemon.fx
+            exchange = self.exchanges[row] if row < len(self.exchanges) else None
+            if fx and fx.is_enabled() and exchange and exchange != fx.exchange.name():
+                fx.set_exchange(exchange)
+    
             
     @objc_method
-    def  pickerView_titleForRow_forComponent_(self, p : ObjCInstance, row : int, component : int) -> ObjCInstance:
+    def  pickerView_viewForRow_forComponent_reusingView_(self, p : ObjCInstance, row : int, component : int, view : ObjCInstance) -> ObjCInstance:
+        def getTitle(p : ObjCInstance, row : int) -> str:
+            if p.tag == TAG_BASE_UNIT: return str(UNIT_KEYS[row])
+            elif p.tag == TAG_NZ: return str('%d'%(row))
+            elif p.tag == TAG_BLOCK_EXPLORER: return str(web.BE_sorted_list()[row])
+            elif p.tag == TAG_FIAT_CURRENCY: return str(self.currencies[row])
+            elif p.tag == TAG_FIAT_EXCHANGE: return str(self.exchanges[row])
+            else: raise ValueError('Unknown pickerView tag: {}'.format(int(p.tag)))
+            return '*Error*' # not reached
         assert component == 0
-        if p.tag == TAG_BASE_UNIT: return ns_from_py(UNIT_KEYS[row])
-        elif p.tag == TAG_NZ: return ns_from_py(str('%d'%(row)))
-        elif p.tag == TAG_BLOCK_EXPLORER: return ns_from_py(web.BE_sorted_list()[row])
-        else: raise ValueError('Unknown pickerView tag: {}'.format(int(p.tag)))
-        return ns_from_py('Error') # not reached
-
-    @objc_method
-    def  pickerView_attributedTitleForRow_forComponent_(self, p : ObjCInstance, row : int, component : int) -> ObjCInstance:
-        tit = py_from_ns(self.pickerView_titleForRow_forComponent_(p, row, component))
-        return utils.nsattributedstring_from_html('<font size="3" color="#000066" face="Helvetica">{}</font>'.format(tit))
-    
-#    @objc_method
-#    def pickerView_rowHeightForComponent_(self, p: ObjCInstance, component : int) -> float:
-#        return 15.0
+        tit = getTitle(p, row)
+        l = view if view is not None else UILabel.new().autorelease()
+        l.text = tit
+        l.textColor = UIColor.colorWithRed_green_blue_alpha_(0.0,0.0,0.5,1.0)
+        l.minimumScaleFactor = 0.5
+        l.adjustsFontSizeToFitWidth = True
+        return l
+        
     
     ### ACTION HANDLERS -- basically calls back into gui object ###
     @objc_method
@@ -302,3 +418,23 @@ class PrefsVC(UITableViewController):
     def onUseCashAddr_(self, s: ObjCInstance) -> None:
         parent = gui.ElectrumGui.gui
         parent.toggle_cashaddr(bool(s.isOn()))
+    @objc_method
+    def onFiatHistory_(self, s: ObjCInstance) -> None:
+        parent = gui.ElectrumGui.gui
+        fx = parent.daemon.fx
+        if not fx: return
+        fx.set_history_config(s.isOn())
+        self.updateExchanges()
+        p = self.tableView.viewWithTag_(TAG_FIAT_EXCHANGE)
+        if p is not None: p.reloadData()
+        parent.historyVC.needUpdate()
+        if fx.is_enabled() and s.isOn():
+            # reset timeout to get historical rates
+            fx.timeout = 0
+    @objc_method
+    def onFiatBal_(self, s: ObjCInstance) -> None:
+        parent = gui.ElectrumGui.gui
+        fx = parent.daemon.fx
+        if not fx: return
+        fx.set_fiat_address_config(s.isOn())
+        parent.addressesVC.needUpdate()

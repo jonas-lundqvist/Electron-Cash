@@ -140,9 +140,9 @@ def main():
             'verbose': True,
             'cmd': 'gui',
             'gui': 'ios_native',
-            'fiat_address' : True,
-            'use_exchange_rate' : True,
-            'currency' : 'USD'
+#            'fiat_address' : True,
+#            'use_exchange_rate' : True,
+#            'currency' : 'USD'
     }
 
     config_options['cwd'] = os.getcwd()

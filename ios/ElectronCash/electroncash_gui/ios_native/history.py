@@ -52,10 +52,12 @@ class TxDetail(UIViewController):
     @objc_method
     def onCopyBut_(self, but) -> None:
         print("Copy button pressed")
+        utils.show_timed_alert(self,"UNIMPLEMENTED", "Copy button unimplemented -- coming soon!", 2.0)
 
     @objc_method
     def onQRBut_(self, but) -> None:
         print("QR button pressed")
+        utils.show_timed_alert(self,"UNIMPLEMENTED", "QR button unimplemented -- coming soon!", 2.0)
  
 # History Tab -- shows tx's, etc
 class HistoryTableVC(UITableViewController):
