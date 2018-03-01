@@ -585,9 +585,7 @@ class ElectrumGui(PrintError):
         self.config.set_key('show_cashaddr', on)
         self.update_cashaddr_icon()
         Address.show_cashaddr(on)
-        self.historyVC.needUpdate()
-        self.addressesVC.needUpdate()
-        self.prefsVC.refresh()
+        self.refresh_all()
         #for window in self.gui_object.windows:
         #    window.cashaddr_toggled_signal.emit()
               
@@ -743,10 +741,7 @@ class ElectrumGui(PrintError):
                 return
             self.decimal_point = dec
             self.config.set_key('decimal_point', self.decimal_point, True)
-            self.historyVC.needUpdate()
-            self.addressesVC.needUpdate()
-            self.helper.needUpdate()
-            self.prefsVC.refresh()
+            self.refresh_all()
             print("Decimal point set to: %d"%dec)
         else:
             raise ValueError('Passed-in decimal point %s is not one of [2,5,8]'%str(dec))
@@ -759,9 +754,7 @@ class ElectrumGui(PrintError):
         if self.num_zeros != value:
             self.num_zeros = value
             self.config.set_key('num_zeros', value, True)
-            self.historyVC.needUpdate()
-            self.addressesVC.needUpdate()
-            self.helper.needUpdate()
+            self.refresh_all()
 
     def validate_amount(self, text):
         try:
