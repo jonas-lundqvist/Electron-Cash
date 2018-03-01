@@ -15,18 +15,21 @@
             <rect key="frame" x="0.0" y="0.0" width="375" height="44"/>
             <autoresizingMask key="autoresizingMask"/>
             <tableViewCellContentView key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" tag="100" contentMode="center" tableViewCell="LO7-Yo-k3M" id="U7X-kk-sCt">
-                <rect key="frame" x="0.0" y="0.0" width="375" height="43"/>
+                <rect key="frame" x="0.0" y="0.0" width="375" height="43.5"/>
                 <autoresizingMask key="autoresizingMask"/>
                 <subviews>
-                    <label opaque="NO" userInteractionEnabled="NO" tag="1" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" misplaced="YES" text="Title" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" minimumScaleFactor="0.5" translatesAutoresizingMaskIntoConstraints="NO" id="oA5-n9-BB5">
-                        <rect key="frame" x="8" y="11" width="183" height="21"/>
+                    <label opaque="NO" userInteractionEnabled="NO" tag="1" contentMode="left" verticalHuggingPriority="251" text="Title" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" minimumScaleFactor="0.5" translatesAutoresizingMaskIntoConstraints="NO" id="oA5-n9-BB5">
+                        <rect key="frame" x="8" y="11" width="204" height="21"/>
                         <fontDescription key="fontDescription" type="system" pointSize="17"/>
                         <nil key="textColor"/>
                         <nil key="highlightedColor"/>
                     </label>
-                    <button opaque="NO" tag="2" contentMode="scaleToFill" misplaced="YES" contentHorizontalAlignment="left" contentVerticalAlignment="fill" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="GAH-V1-2AU">
-                        <rect key="frame" x="199" y="0.0" width="176" height="43"/>
+                    <button opaque="NO" tag="2" contentMode="scaleToFill" horizontalHuggingPriority="251" horizontalCompressionResistancePriority="250" contentHorizontalAlignment="left" contentVerticalAlignment="fill" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="GAH-V1-2AU">
+                        <rect key="frame" x="220" y="0.0" width="155" height="43"/>
                         <color key="backgroundColor" red="0.91746425629999995" green="0.95870447160000005" blue="0.99979293349999998" alpha="1" colorSpace="calibratedRGB"/>
+                        <constraints>
+                            <constraint firstAttribute="width" relation="greaterThanOrEqual" constant="155" id="Bnb-T5-FsW"/>
+                        </constraints>
                         <inset key="contentEdgeInsets" minX="10" minY="0.0" maxX="5" maxY="0.0"/>
                         <state key="normal" title="Button">
                             <color key="titleColor" red="0.15294117647058825" green="0.14901960784313725" blue="0.45098039215686275" alpha="1" colorSpace="calibratedRGB"/>
