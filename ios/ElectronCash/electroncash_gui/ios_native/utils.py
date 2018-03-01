@@ -25,6 +25,7 @@
 # SOFTWARE.
 import sys
 import os
+from inspect import signature
 from .uikit_bindings import *
 from .custom_objc import *
 
@@ -187,3 +188,107 @@ if u.calllater_table.get(timer_ptr):
     ptr =  HelpfulGlue.evalPython_afterDelay_(python,timeout)
     calllater_table[ptr] = [func,*args]
 
+###
+### Modal picker stuff
+###
+pickerCallables = {}
+class UTILSModalPickerHelper(UIViewController):
+    
+    items = objc_property()
+    lastSelection = objc_property()
+ 
+    @objc_method
+    def init(self) -> ObjCInstance:
+        self = ObjCInstance(send_super(self,'init'))
+        self.items = None
+        self.lastSelection = 0
+        return self
+    
+    @objc_method
+    def dealloc(self) -> None:
+        self.finished()
+        self.view = None
+        print("UTILSModalPickerHelper dealloc")
+        send_super(self, 'dealloc')
+    
+    @objc_method
+    def numberOfComponentsInPickerView_(self, p : ObjCInstance) -> int:
+        return 1
+    @objc_method
+    def  pickerView_numberOfRowsInComponent_(self, p : ObjCInstance, component : int) -> int:
+        assert component == 0
+        return len(self.items)    
+    @objc_method
+    def pickerView_didSelectRow_inComponent_(self, p : ObjCInstance, row : int, component : int) -> None:
+        assert component == 0 and row < len(self.items)
+        self.lastSelection = row
+                
+    @objc_method
+    def  pickerView_titleForRow_forComponent_(self, p : ObjCInstance, row : int, component : int) -> ObjCInstance:
+        assert component == 0 and row < len(self.items)
+        return ns_from_py(self.items[row])
+    
+    @objc_method
+    def onOk_(self, but : ObjCInstance) -> None:
+#        print ("Ok pushed")
+        global pickerCallables
+        cb = pickerCallables.get(self.ptr.value, None) 
+        if cb is not None:
+            sig = signature(cb)
+            params = sig.parameters
+            if len(params) > 0:
+                cb(int(self.lastSelection))
+            else:
+                cb()
+        self.finished()
+        self.autorelease()
+         
+    @objc_method
+    def onCancel_(self, but : ObjCInstance) -> None:
+#        print ("Cancel pushed")        
+        self.finished()
+        self.autorelease()
+
+    @objc_method
+    def finished(self) -> None:
+        global pickerCallables
+        if pickerCallables.get(self.ptr.value, None) is not None: del pickerCallables[self.ptr.value]  
+        if self.viewIfLoaded is not None:
+            HelpfulGlue.viewController_dismissModalViewControllerAnimated_python_(self,True,None)
+        self.items = None
+        self.lastSelection = None
+
+def present_modal_picker(parentVC : ObjCInstance,
+                         items : list,
+                         selectedIndex : int = 0,
+                         okCallback : callable = None,
+                         okButtonTitle : str = "OK",
+                         cancelButtonTitle : str = "Cancel") -> ObjCInstance:
+    assert parentVC is not None and items is not None and len(items)
+    helper = UTILSModalPickerHelper.new().autorelease()
+    objs = NSBundle.mainBundle.loadNibNamed_owner_options_("ModalPickerView",helper,None)
+    assert objs is not None and len(objs)
+    helper.retain()
+    mpv = objs[0]
+    p = mpv.viewWithTag_(200)
+    okBut = mpv.viewWithTag_(1)
+    okLbl = mpv.viewWithTag_(11)
+    cancelBut = mpv.viewWithTag_(2)
+    cancelLbl = mpv.viewWithTag_(22)
+    assert p and okBut and cancelBut
+    if okButtonTitle is not None and okLbl is not None: okLbl.text = okButtonTitle
+    if cancelButtonTitle is not None and cancelLbl is not None: cancelLbl.text = cancelButtonTitle
+    helper.view = mpv
+    helper.items = items
+    okBut.addTarget_action_forControlEvents_(helper, SEL(b'onOk:'), UIControlEventTouchUpInside)
+    cancelBut.addTarget_action_forControlEvents_(helper, SEL(b'onCancel:'), UIControlEventTouchUpInside)
+    p.delegate = helper
+    p.dataSource = helper
+    if okCallback is not None: pickerCallables[helper.ptr.value] = okCallback
+    if selectedIndex > 0 and selectedIndex < len(items):
+        p.selectRow_inComponent_animated_(selectedIndex, 0, False)
+        helper.lastSelection = selectedIndex
+    helper.modalPresentationStyle = UIModalPresentationOverCurrentContext
+    helper.disablesAutomaticKeyboardDismissal = False
+    HelpfulGlue.viewController_presentModalViewController_animated_python_(parentVC,helper,True,None)
+    return helper

@@ -101,7 +101,14 @@ class SendVC(UIViewController):
         but.addTarget_action_forControlEvents_(self, SEL(b'onQRBut:'), UIControlEventTouchUpInside)
 
     @objc_method
+    def pckrtst_(self, idx : int) -> None:
+        print ("pcktst got %d"%idx)
+
+    @objc_method
     def onQRBut_(self, but):
+        utils.present_modal_picker(self.tabBarController, ["Item1", "item2", "someotheritem3", "item4", "foo", "bar"],
+                                   4, self.pckrtst_, _("OK"), _("Cancel"))
+        return
         if not QRCodeReader.isAvailable:
             utils.show_alert(self, _("QR Not Avilable"), _("The camera is not available for reading QR codes"))
         else:
