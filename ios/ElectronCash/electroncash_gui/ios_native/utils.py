@@ -196,19 +196,22 @@ class UTILSModalPickerHelper(UIViewController):
     
     items = objc_property()
     lastSelection = objc_property()
+    needsDismiss = objc_property()
  
     @objc_method
     def init(self) -> ObjCInstance:
         self = ObjCInstance(send_super(self,'init'))
         self.items = None
         self.lastSelection = 0
+        self.needsDismiss = False
         return self
     
     @objc_method
     def dealloc(self) -> None:
         self.finished()
         self.view = None
-        print("UTILSModalPickerHelper dealloc")
+        self.needsDismiss = None
+#        print("UTILSModalPickerHelper dealloc")
         send_super(self, 'dealloc')
     
     @objc_method
@@ -253,10 +256,11 @@ class UTILSModalPickerHelper(UIViewController):
     def finished(self) -> None:
         global pickerCallables
         if pickerCallables.get(self.ptr.value, None) is not None: del pickerCallables[self.ptr.value]  
-        if self.viewIfLoaded is not None:
+        if self.viewIfLoaded is not None and self.needsDismiss:
             HelpfulGlue.viewController_dismissModalViewControllerAnimated_python_(self,True,None)
         self.items = None
         self.lastSelection = None
+        self.needsDismiss = False
 
 def present_modal_picker(parentVC : ObjCInstance,
                          items : list,
@@ -265,10 +269,10 @@ def present_modal_picker(parentVC : ObjCInstance,
                          okButtonTitle : str = "OK",
                          cancelButtonTitle : str = "Cancel") -> ObjCInstance:
     assert parentVC is not None and items is not None and len(items)
-    helper = UTILSModalPickerHelper.new().autorelease()
+    helper = UTILSModalPickerHelper.new()
     objs = NSBundle.mainBundle.loadNibNamed_owner_options_("ModalPickerView",helper,None)
-    assert objs is not None and len(objs)
-    helper.retain()
+    if objs is None or not len(objs):
+        raise Exception("Could not load ModalPickerView nib!")
     mpv = objs[0]
     p = mpv.viewWithTag_(200)
     okBut = mpv.viewWithTag_(1)
@@ -291,4 +295,5 @@ def present_modal_picker(parentVC : ObjCInstance,
     helper.modalPresentationStyle = UIModalPresentationOverCurrentContext
     helper.disablesAutomaticKeyboardDismissal = False
     HelpfulGlue.viewController_presentModalViewController_animated_python_(parentVC,helper,True,None)
+    helper.needsDismiss = True
     return helper

@@ -564,7 +564,7 @@ class ElectrumGui(PrintError):
             title = py_from_ns(presented.visibleViewController.title)
         except:
             pass
-        HelpfulGlue.viewController_dismissModalViewControllerAnimated_python_(self.tabController,True,'print("Modal \'%s\' was dismissed")'%title)
+        HelpfulGlue.viewController_dismissModalViewControllerAnimated_python_(self.tabController,True,None)
         
     def cashaddr_icon(self):
         imgname = "addr_converter_bw.png"

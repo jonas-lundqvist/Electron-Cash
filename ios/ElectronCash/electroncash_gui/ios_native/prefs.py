@@ -178,11 +178,13 @@ class PrefsVC(UITableViewController):
                 l2.text = parent.base_unit() + "/kB"
                 tf.delegate = self
                 tf.text = str(parent.prefs_get_max_fee_rate())
-                tf.addTarget_action_forControlEvents_(self, SEL(b'onMaxStaticFee:'), UIControlEventEditingChanged)
+                if tf.allTargets.count <= 0:
+                    tf.addTarget_action_forControlEvents_(self, SEL(b'onMaxStaticFee:'), UIControlEventEditingChanged)
             elif row == 1: # 'edit fees manually', a bool cell
                 l = cell.viewWithTag_(1)
                 s = cell.viewWithTag_(2)
-                s.addTarget_action_forControlEvents_(self, SEL(b'onShowFee:'), UIControlEventValueChanged)
+                if s.allTargets.count <= 0:
+                    s.addTarget_action_forControlEvents_(self, SEL(b'onShowFee:'), UIControlEventValueChanged)
                 l.text = _('Edit fees manually')
                 s.on =  parent.prefs_get_show_fee()
         elif secName == 'Transactions':
@@ -193,7 +195,8 @@ class PrefsVC(UITableViewController):
                 b, enabled = parent.prefs_get_use_change()
                 s.on = b
                 utils.uiview_set_enabled(cell, enabled)
-                s.addTarget_action_forControlEvents_(self, SEL(b'onUseChange:'), UIControlEventValueChanged)
+                if s.allTargets.count <= 0:
+                    s.addTarget_action_forControlEvents_(self, SEL(b'onUseChange:'), UIControlEventValueChanged)
             elif row == 1:
                 cell.contentView.tag = TAG_MULTIPLE_CHANGE_CELL
                 l.text = _("Use multiple change addresses")
@@ -202,98 +205,97 @@ class PrefsVC(UITableViewController):
                 # for some reason this needs to be called later, not here during setup :/
                 utils.call_later(0.500, lambda : utils.uiview_set_enabled(self.multipleChangeCell(), enabled))
                 #utils.uiview_set_enabled(self.multipleChangeCell(), enabled)
-                s.addTarget_action_forControlEvents_(self, SEL(b'onUseMultiple:'), UIControlEventValueChanged)
+                if s.allTargets.count <= 0:
+                    s.addTarget_action_forControlEvents_(self, SEL(b'onUseMultiple:'), UIControlEventValueChanged)
             elif row == 2:
                 l.text = _("Spend only confirmed coins")
                 s.on = parent.prefs_get_confirmed_only()
-                s.addTarget_action_forControlEvents_(self, SEL(b'onConfirmedOnly:'), UIControlEventValueChanged)
+                if s.allTargets.count <= 0:
+                    s.addTarget_action_forControlEvents_(self, SEL(b'onConfirmedOnly:'), UIControlEventValueChanged)
         elif secName == 'Appearance':
             if row == 0:
                 l = cell.viewWithTag_(1)
                 s = cell.viewWithTag_(2)
                 l.text = _('CashAddr address format')
                 s.on = parent.prefs_get_use_cashaddr()
-                s.addTarget_action_forControlEvents_(self, SEL(b'onUseCashAddr:'), UIControlEventValueChanged)
+                if s.allTargets.count <= 0:
+                    s.addTarget_action_forControlEvents_(self, SEL(b'onUseCashAddr:'), UIControlEventValueChanged)
             elif row == 1:
                 l = cell.viewWithTag_(1)
-                p = cell.viewWithTag_(2)
-                p = p if p is not None else cell.viewWithTag_(TAG_NZ)
+                b = cell.viewWithTag_(2)
+                b = b if b is not None else cell.viewWithTag_(TAG_NZ)
                 l.text = _('Zeros after decimal point')
-                if p is not None:
-                    p.dataSource = self
-                    p.delegate = self
-                    p.tag = TAG_NZ
-                    nr = self.pickerView_numberOfRowsInComponent_(p, 0)
+                if b is not None:
+                    b.tag = TAG_NZ
+                    if b.allTargets.count <= 0:
+                        b.addTarget_action_forControlEvents_(self, SEL(b'onNZBut:'), UIControlEventTouchUpInside)
+                    nr = len(self.getNumZerosList())
                     nz_prefs = parent.prefs_get_num_zeros()
                     if nz_prefs >= nr:
                         nz_prefs = nr-1
-                    p.selectRow_inComponent_animated_(nz_prefs, 0, False)
+                    b.setTitle_forState_(str(nz_prefs),UIControlStateNormal)
             elif row == 2:
                 l = cell.viewWithTag_(1)
-                p = cell.viewWithTag_(2)
-                p = p if p is not None else cell.viewWithTag_(TAG_BASE_UNIT)
+                b = cell.viewWithTag_(2)
+                b = b if b is not None else cell.viewWithTag_(TAG_BASE_UNIT)
                 l.text = _('Base unit')
-                if p is not None:
-                    p.dataSource = self
-                    p.delegate = self
-                    p.tag = TAG_BASE_UNIT
-                    try:
-                        r,*dummy = [i for i,v in enumerate(UNIT_KEYS) if v == parent.base_unit()]
-                        p.selectRow_inComponent_animated_(r, 0, False)
-                    except:
-                        pass
+                if b is not None:
+                    b.tag = TAG_BASE_UNIT
+                    b.setTitle_forState_(parent.base_unit(),UIControlStateNormal)
+                    if b.allTargets.count <= 0:
+                        b.addTarget_action_forControlEvents_(self, SEL(b'onBaseUnitBut:'), UIControlEventTouchUpInside)
             elif row == 3:
                 l = cell.viewWithTag_(1)
-                p = cell.viewWithTag_(2)
-                p = p if p is not None else cell.viewWithTag_(TAG_BASE_BLOCK_EXPLORER)
+                b = cell.viewWithTag_(2)
+                b = b if b is not None else cell.viewWithTag_(TAG_BLOCK_EXPLORER)
                 l.text = _('Online Block Explorer')
-                if p is not None:
-                    p.dataSource = self
-                    p.delegate = self
-                    p.tag = TAG_BLOCK_EXPLORER
+                if b is not None:
+                    b.tag = TAG_BLOCK_EXPLORER
+                    be = web.BE_sorted_list()
+                    be = be if be is not None and len(be) > 0 else ["None"]
+                    beprefs = parent.config.get('block_explorer', None)
+                    if beprefs not in be:  beprefs = be[0]
+                    b.setTitle_forState_(beprefs,UIControlStateNormal)
+                    if b.allTargets.count <= 0:
+                        b.addTarget_action_forControlEvents_(self, SEL(b'onBlockExplorerBut:'), UIControlEventTouchUpInside)
         elif secName == 'Fiat':
             if row == 0:
                 l = cell.viewWithTag_(1)
-                p = cell.viewWithTag_(2)
-                p = p if p is not None else cell.viewWithTag_(TAG_FIAT_CURRENCY)
+                b = cell.viewWithTag_(2)
+                b = b if b is not None else cell.viewWithTag_(TAG_FIAT_CURRENCY)
                 l.text = _('Fiat currency')
-                if p is not None:
-                    p.dataSource = self
-                    p.delegate = self
-                    p.tag = TAG_FIAT_CURRENCY
-                    if fx.is_enabled():
-                        curr = fx.get_currency()
-                        currs = py_from_ns(self.currencies)
-                        idx = [i for i,v in enumerate(currs) if v == curr]
-                        idx = 0 if len(idx) <= 0 else idx[0]
-                        if idx > 0: p.selectRow_inComponent_animated_(idx, 0, False)               
+                if b is not None:
+                    b.tag = TAG_FIAT_CURRENCY
+                    b.enabled = True
+                    curr = fx.get_currency() if fx.is_enabled() else _('None')
+                    b.setTitle_forState_(curr, UIControlStateNormal)
+                    if b.allTargets.count <= 0:
+                        b.addTarget_action_forControlEvents_(self, SEL(b'onFiatCurrencyBut:'), UIControlEventTouchUpInside)                        
             elif row == 1:
                 l = cell.viewWithTag_(1)
                 s = cell.viewWithTag_(2)
                 l.text = _('Show history rates')
                 s.on = bool(fx and fx.get_history_config())
-                s.addTarget_action_forControlEvents_(self, SEL(b'onFiatHistory:'), UIControlEventValueChanged)
+                if s.allTargets.count <= 0:
+                    s.addTarget_action_forControlEvents_(self, SEL(b'onFiatHistory:'), UIControlEventValueChanged)
             elif row == 2:
                 l = cell.viewWithTag_(1)
                 s = cell.viewWithTag_(2)
                 l.text = _('Show Fiat balance for addresses')
                 s.on = bool(fx and fx.get_fiat_address_config())
-                s.addTarget_action_forControlEvents_(self, SEL(b'onFiatBal:'), UIControlEventValueChanged)
+                if s.allTargets.count <= 0:
+                    s.addTarget_action_forControlEvents_(self, SEL(b'onFiatBal:'), UIControlEventValueChanged)
             elif row == 3:
                 l = cell.viewWithTag_(1)
-                p = cell.viewWithTag_(2)
-                p = p if p is not None else cell.viewWithTag_(TAG_FIAT_EXCHANGE)
+                b = cell.viewWithTag_(2)
+                b = b if b is not None else cell.viewWithTag_(TAG_FIAT_EXCHANGE)
                 l.text = _('Source')
-                if p is not None:
-                    p.dataSource = self
-                    p.delegate = self
-                    p.tag = TAG_FIAT_EXCHANGE
-                    ex = fx.config_exchange() if fx else 'None'
-                    exs = self.exchanges
-                    idx = [i for i,v in enumerate(exs) if v == ex]
-                    idx = 0 if len(idx) <= 0 else idx[0]
-                    if len(exs) and idx > 0: p.selectRow_inComponent_animated_(idx, 0, False)               
-            
+                if b is not None:
+                    b.tag = TAG_FIAT_EXCHANGE
+                    ex = fx.config_exchange() if fx else _('None')
+                    b.setTitle_forState_(ex, UIControlStateNormal)
+                    if b.allTargets.count <= 0:
+                        b.addTarget_action_forControlEvents_(self, SEL(b'onFiatExchangeBut:'), UIControlEventTouchUpInside)                        
                 
     @objc_method
     def createCellForSection_row_(self, secName_oc : ObjCInstance, row : int ) -> ObjCInstance:
@@ -310,7 +312,7 @@ class PrefsVC(UITableViewController):
             assert objs is not None and len(objs)
             cell = objs[0]
         elif ident in ['Appearance_1', 'Appearance_2', 'Appearance_3', 'Fiat_0', 'Fiat_3']:
-            objs = NSBundle.mainBundle.loadNibNamed_owner_options_("PickerCell",self.tableView,None)
+            objs = NSBundle.mainBundle.loadNibNamed_owner_options_("ButtonCell",self.tableView,None)
             assert objs is not None and len(objs)
             cell = objs[0]
 
@@ -324,71 +326,99 @@ class PrefsVC(UITableViewController):
         self.onMaxStaticFee_(tf)
         return True
     
-    
-    ## UIPickerViewDataSource delegate ##
     @objc_method
-    def numberOfComponentsInPickerView_(self, p : ObjCInstance) -> int:
-        return 1
-    @objc_method
-    def  pickerView_numberOfRowsInComponent_(self, p : ObjCInstance, component : int) -> int:
-        assert component == 0
+    def getNumZerosList(self) -> ObjCInstance:
         parent = gui.ElectrumGui.gui
-        if p.tag == TAG_BASE_UNIT: return len(UNIT_KEYS)
-        elif p.tag == TAG_NZ: return min(parent.get_decimal_point(), 8) + 1
-        elif p.tag == TAG_BLOCK_EXPLORER: return len(web.BE_sorted_list())
-        elif p.tag == TAG_FIAT_CURRENCY: return len(self.currencies)
-        elif p.tag == TAG_FIAT_EXCHANGE: return len(self.exchanges)
-        else: raise ValueError('Unknown pickerView tag: {}'.format(int(p.tag)))
-        return 0
-    @objc_method
-    def pickerView_didSelectRow_inComponent_(self, p : ObjCInstance, row : int, component : int) -> None:
-        parent = gui.ElectrumGui.gui
-        if p.tag == TAG_BASE_UNIT:
-            dec = UNITS.get(UNIT_KEYS[row],None)
-            if dec is None:
-                raise Exception('Unknown base unit')
-            parent.prefs_set_decimal_point(dec)
-        elif p.tag == TAG_NZ:
-            parent.prefs_set_num_zeros(row)
-        elif p.tag == TAG_BLOCK_EXPLORER:
-            be = web.BE_sorted_list()[row]
-            parent.config.set_key('block_explorer', be, True)
-        elif p.tag == TAG_FIAT_CURRENCY:
-            is_en = bool(row)
-            ccy = self.currencies[row] if is_en else None
-            parent.daemon.fx.set_enabled(is_en)
-            need_refresh = ccy != parent.daemon.fx.ccy
-            if is_en and ccy is not None and ccy != parent.daemon.fx.ccy:
-                parent.daemon.fx.set_currency(ccy)
-            if need_refresh: parent.refresh_all()
-        elif p.tag == TAG_FIAT_EXCHANGE:
-            fx = parent.daemon.fx
-            exchange = self.exchanges[row] if row < len(self.exchanges) else None
-            if fx and fx.is_enabled() and exchange and exchange != fx.exchange.name():
-                fx.set_exchange(exchange)
-    
-            
-    @objc_method
-    def  pickerView_viewForRow_forComponent_reusingView_(self, p : ObjCInstance, row : int, component : int, view : ObjCInstance) -> ObjCInstance:
-        def getTitle(p : ObjCInstance, row : int) -> str:
-            if p.tag == TAG_BASE_UNIT: return str(UNIT_KEYS[row])
-            elif p.tag == TAG_NZ: return str('%d'%(row))
-            elif p.tag == TAG_BLOCK_EXPLORER: return str(web.BE_sorted_list()[row])
-            elif p.tag == TAG_FIAT_CURRENCY: return str(self.currencies[row])
-            elif p.tag == TAG_FIAT_EXCHANGE: return str(self.exchanges[row])
-            else: raise ValueError('Unknown pickerView tag: {}'.format(int(p.tag)))
-            return '*Error*' # not reached
-        assert component == 0
-        tit = getTitle(p, row)
-        l = view if view is not None else UILabel.new().autorelease()
-        l.text = tit
-        l.textColor = UIColor.colorWithRed_green_blue_alpha_(0.0,0.0,0.5,1.0)
-        l.minimumScaleFactor = 0.5
-        l.adjustsFontSizeToFitWidth = True
-        return l
-        
+        nr = min(parent.get_decimal_point(), 8) + 1
+        ret = [str(i) for i in range(0,nr)]
+        return ns_from_py(ret)
     
     ### ACTION HANDLERS -- basically calls back into gui object ###
+    @objc_method
+    def onNZBut_(self, but : ObjCInstance) -> None:
+        parent = gui.ElectrumGui.gui
+        nzl = py_from_ns(self.getNumZerosList())
+        nz = parent.prefs_get_num_zeros()
+        def onOk(selIdx : int) -> None:
+            parent.prefs_set_num_zeros(selIdx)
+            nz_prefs = parent.prefs_get_num_zeros()
+            b = self.view.viewWithTag_(TAG_NZ)
+            if b is not None: b.setTitle_forState_(str(nz_prefs),UIControlStateNormal)
+        utils.present_modal_picker(parentVC = self, items = nzl, selectedIndex = int(nz),
+                                   okCallback = onOk, okButtonTitle=_("OK"), cancelButtonTitle=_("Cancel"))        
+    @objc_method
+    def onBaseUnitBut_(self, but : ObjCInstance) -> None:
+        parent = gui.ElectrumGui.gui
+        def onOk(selIdx : int) -> None:
+            bu_str = UNIT_KEYS[selIdx]
+            dec = UNITS.get(bu_str,None)
+            if dec is None: raise Exception('Unknown base unit')
+            b = self.view.viewWithTag_(TAG_BASE_UNIT)
+            if b is not None: b.setTitle_forState_(bu_str,UIControlStateNormal)
+            parent.prefs_set_decimal_point(dec)
+        sel = [i for i,v in enumerate(UNIT_KEYS) if v == parent.base_unit()]
+        sel = 0 if len(sel) <= 0 else sel[0]
+        utils.present_modal_picker(parentVC = self, items = UNIT_KEYS, selectedIndex = int(sel),
+                                   okCallback = onOk, okButtonTitle=_("OK"), cancelButtonTitle=_("Cancel"))
+    
+    @objc_method
+    def onBlockExplorerBut_(self, but: ObjCInstance) -> None:
+        parent = gui.ElectrumGui.gui
+        config = parent.config
+        be = web.BE_sorted_list()
+        if be is None or len(be) <= 0:
+            be = ["None"]
+        def onOk(selIdx : int) -> None:
+            be_str = be[selIdx] if selIdx < len(be) else be[0]
+            b = self.view.viewWithTag_(TAG_BLOCK_EXPLORER)
+            if b is not None: b.setTitle_forState_(be_str,UIControlStateNormal)
+            config.set_key('block_explorer', be_str, True)
+        beprefs = config.get('block_explorer', be[0])
+        sel = [i for i,v in enumerate(be) if v == beprefs]
+        sel = 0 if len(sel) <= 0 else sel[0]
+        if len(be):
+            utils.present_modal_picker(parentVC = self, items = be, selectedIndex = int(sel),
+                                       okCallback = onOk, okButtonTitle=_("OK"), cancelButtonTitle=_("Cancel"))
+        
+    @objc_method
+    def onFiatCurrencyBut_(self, but : ObjCInstance) -> None:
+        parent = gui.ElectrumGui.gui
+        fx = parent.daemon.fx
+        ccy = fx.get_currency()
+        ccys = py_from_ns(self.currencies)
+        idx = [i for i,v in enumerate(ccys) if v == ccy]
+        idx = 0 if len(idx) <= 0 else idx[0]
+        def onOk(row : int) -> None:
+            is_en = bool(row)
+            ccy = ccys[row] if is_en else None
+            was_en = bool(fx.is_enabled())
+            need_refresh = ccy != fx.ccy or was_en != is_en
+            fx.set_enabled(is_en)
+            if is_en and ccy is not None and ccy != fx.ccy:
+                fx.set_currency(ccy)
+            if need_refresh: parent.refresh_all()
+        if len(ccys):
+            utils.present_modal_picker(parentVC = self, items = ccys, selectedIndex = int(idx),
+                                       okCallback = onOk, okButtonTitle=_("OK"), cancelButtonTitle=_("Cancel"))
+        
+    @objc_method
+    def onFiatExchangeBut_(self, but : ObjCInstance) -> None:
+        parent = gui.ElectrumGui.gui
+        fx = parent.daemon.fx
+        ex = fx.config_exchange() if fx else 'None'
+        exs = py_from_ns(self.exchanges)
+        idx = [i for i,v in enumerate(exs) if v == ex]
+        idx = 0 if len(idx) <= 0 else idx[0]
+        def onOk(choice : int) -> None:
+            ex = exs[choice]
+            if fx and fx.is_enabled() and ex and ex != fx.exchange.name():
+                fx.set_exchange(ex)
+            b = self.view.viewWithTag_(TAG_FIAT_EXCHANGE)
+            if b is not None: b.setTitle_forState_(ex,UIControlStateNormal)
+        if len(exs) and fx:    
+            utils.present_modal_picker(parentVC = self, items = exs, selectedIndex = int(idx),
+                                       okCallback = onOk, okButtonTitle = _("OK"), cancelButtonTitle = _("Cancel"))
+
     @objc_method
     def onShowFee_(self, but : ObjCInstance) -> None:
         parent = gui.ElectrumGui.gui
@@ -425,8 +455,6 @@ class PrefsVC(UITableViewController):
         if not fx: return
         fx.set_history_config(s.isOn())
         self.updateExchanges()
-        p = self.tableView.viewWithTag_(TAG_FIAT_EXCHANGE)
-        if p is not None: p.reloadData()
         parent.historyVC.needUpdate()
         if fx.is_enabled() and s.isOn():
             # reset timeout to get historical rates

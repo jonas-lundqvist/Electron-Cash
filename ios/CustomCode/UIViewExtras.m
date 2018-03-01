@@ -8,8 +8,6 @@
 
 #import "UIViewExtras.h"
 #import <QuartzCore/QuartzCore.h>
-//#import "Constants.h"
-//#import "Util.h"
 #include <stdlib.h>
 #define kGuiAnimDur 0.3 /* in seconds */
 
