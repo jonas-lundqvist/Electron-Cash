@@ -68,7 +68,7 @@ completion_tmp = None
 alerts_helpful_glue = None
     
 
-def show_alert(vc : ObjCInstance, # the viewcontroller to present the alert view in
+def show_alert1(vc : ObjCInstance, # the viewcontroller to present the alert view in
                title : str, # the alert title
                message : str, # the alert message
                # actions is a list of lists: each element has:  Button names, plus optional callback spec
@@ -171,9 +171,9 @@ def call_later(timeout : float, func : callable, *args) -> None:
         t = ObjCInstance(t_in)
 #        print("OnTimer called with t=%d, calling func"%(t.ptr.value))
         func(*args)
-        if calllater_blks.get(t.ptr.value,None) is not None:
-            del calllater_blks[t.ptr.value]
+        if calllater_blks.pop(t.ptr.value,None) is not None:
 #            print("Deleted block from table")
+            pass
 #        else:
 #            print("Could not find block in table!")
     blk = Block(OnTimer)
@@ -248,7 +248,7 @@ class UTILSModalPickerHelper(UIViewController):
     @objc_method
     def finished(self) -> None:
         global pickerCallables
-        if pickerCallables.get(self.ptr.value, None) is not None: del pickerCallables[self.ptr.value]  
+        pickerCallables.pop(self.ptr.value, None)  
         if self.viewIfLoaded is not None and self.needsDismiss:
             HelpfulGlue.viewController_dismissModalViewControllerAnimated_python_(self,True,None)
         self.items = None
@@ -297,9 +297,9 @@ class MyNotif(CWStatusBarNotification):
     @objc_method
     def dealloc(self) -> None:
         global cw_notif_blocks
-        if cw_notif_blocks.get(self.ptr.value, None) is not None:
-            del cw_notif_blocks[self.ptr.value]
+        if cw_notif_blocks.pop(self.ptr.value, None) is not None:
             #print("deleted block")
+            pass
         #print('%ld MyNotif dealloc...'%int(self.ptr.value))
         send_super(self, 'dealloc')
 def show_notification(message : str,
