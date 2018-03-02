@@ -26,6 +26,7 @@
 import sys
 import os
 from inspect import signature
+from typing import Callable, Any
 from .uikit_bindings import *
 from .custom_objc import *
 
@@ -76,7 +77,7 @@ def show_alert(vc : ObjCInstance, # the viewcontroller to present the alert view
                cancel: str = None, # name of the button you want to designate as 'Cancel' (ends up being first)
                destructive: str = None, # name of the button you want to designate as destructive (ends up being red)
                style: int = UIAlertControllerStyleAlert,
-               completion: callable = None, # optional completion function that gets called when alert is presented
+               completion: Callable[[],None] = None, # optional completion function that gets called when alert is presented
                animated: bool = True # whether or not to animate the alert
                ) -> ObjCInstance:
     assert NSThread.currentThread.isMainThread
@@ -163,30 +164,20 @@ def show_timed_alert(vc : ObjCInstance, title : str, message : str,
 ###################################################
 ### Calling callables later or from the main thread
 ###################################################
-
-def do_in_main_thread(func : callable, *args) -> None:
+def do_in_main_thread(func : Callable, *args) -> None:
     if NSThread.currentThread.isMainThread:
         func(*args)
     else:
         call_later(0.001, func, *args)
 
-calllater_blks = {}
-def call_later(timeout : float, func : callable, *args) -> None:
-    global calllater_blks
+def call_later(timeout : float, func : Callable, *args) -> None:
     def OnTimer(t_in : objc_id) -> None:
-        global calllater_blks
         t = ObjCInstance(t_in)
-#        print("OnTimer called with t=%d, calling func"%(t.ptr.value))
         func(*args)
-        if calllater_blks.pop(t.ptr.value,None) is not None:
-#            print("Deleted block from table")
-            pass
-#        else:
-#            print("Could not find block in table!")
-    blk = Block(OnTimer)
-    timer = NSTimer.timerWithTimeInterval_repeats_block_(timeout, False, blk)
-    calllater_blks[timer.ptr.value] = blk # keep it around
+        BlockReap(OnTimer)
+    timer = NSTimer.timerWithTimeInterval_repeats_block_(timeout, False, BlockKeepAlive(OnTimer))
     NSRunLoop.mainRunLoop().addTimer_forMode_(timer, NSDefaultRunLoopMode)
+
     
 ###
 ### Modal picker stuff
@@ -268,7 +259,7 @@ class UTILSModalPickerHelper(UIViewController):
 def present_modal_picker(parentVC : ObjCInstance,
                          items : list,
                          selectedIndex : int = 0,
-                         okCallback : callable = None,
+                         okCallback : Callable[[int],None] = None,
                          okButtonTitle : str = "OK",
                          cancelButtonTitle : str = "Cancel") -> ObjCInstance:
     assert parentVC is not None and items is not None and len(items)
@@ -320,7 +311,7 @@ def show_notification(message : str,
                       style : int = CWNotificationStyleStatusBarNotification,
                       animationStyle : int = CWNotificationAnimationStyleTop,
                       animationType : int = CWNotificationAnimationTypeReplace,
-                      onTapCallback : callable = None, # the function to call if user taps notification -- should return None and take no args
+                      onTapCallback : Callable[[],None] = None, # the function to call if user taps notification -- should return None and take no args
                       multiline : bool = False) -> None:
     global cw_notif_blocks
     cw_notif = MyNotif.new().autorelease()

@@ -3,6 +3,7 @@ from ctypes import util
 from enum import Enum
 
 from rubicon.objc import *
+import typing
 
 ######################################################################
 
@@ -570,6 +571,33 @@ NSLocale = ObjCClass("NSLocale")
 # UIPasteboard for clipboard access
 UIPasteboard = ObjCClass("UIPasteboard")
 
+_BlockKeepAlives_ = []
+def BlockKeepAlive(fun: typing.Callable) -> Block:
+    if not callable(fun):
+        print("WARNING: BlockKeepAlive passed a non-callable object: %s"%str(fun))
+    global _BlockKeepAlives_
+    blk = Block(fun)
+    _BlockKeepAlives_.append(blk)
+    #print("Added %s to block keep-alives"%str(fun))
+    return blk
+
+def BlockReap(blk_or_fun: typing.Any) -> None:
+    global _BlockKeepAlives_
+    if type(blk_or_fun) is Block:
+        try:
+            _BlockKeepAlives_.remove(blk_or_fun)
+            #print("Reaped a keep-alive block as block")
+            return
+        except:
+            pass
+    elif callable(blk_or_fun):
+        for i,blk in enumerate(_BlockKeepAlives_):
+            if blk.func == blk_or_fun:
+                _BlockKeepAlives_.pop(i)
+                #print("Reaped a keep-alive block as func")
+                return
+    print("WARNING: Unable to find func/blk: " + str(blk_or_fun))
+
 def UIKITNilBlockFun() -> None:
     pass
-NilBlock = Block(UIKITNilBlockFun)
+NilBlock = BlockKeepAlive(UIKITNilBlockFun)
