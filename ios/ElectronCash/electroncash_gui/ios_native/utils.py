@@ -233,6 +233,7 @@ def present_modal_picker(parentVC : ObjCInstance,
                          okCallback : Callable[[int],None] = None,
                          okButtonTitle : str = "OK",
                          cancelButtonTitle : str = "Cancel") -> ObjCInstance:
+    global pickerCallables
     assert parentVC is not None and items is not None and len(items)
     helper = UTILSModalPickerHelper.new()
     objs = NSBundle.mainBundle.loadNibNamed_owner_options_("ModalPickerView",helper,None)
