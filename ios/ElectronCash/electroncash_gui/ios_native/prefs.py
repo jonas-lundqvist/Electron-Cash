@@ -174,7 +174,7 @@ class PrefsVC(UITableViewController):
                 tf.placeholder = parent.base_unit()
                 l2.text = parent.base_unit() + "/kB"
                 tf.delegate = self
-                tf.text = str(parent.prefs_get_max_fee_rate())
+                tf.text = get_max_static_fee_str(parent)
                 if tf.allTargets.count <= 0:
                     tf.addTarget_action_forControlEvents_(self, SEL(b'onMaxStaticFee:'), UIControlEventEditingChanged)
             elif row == 1: # 'edit fees manually', a bool cell
@@ -426,7 +426,7 @@ class PrefsVC(UITableViewController):
         print("On Max Static Fee: %s"%str(tf.text))
         val = parent.prefs_set_max_fee_rate(tf.text)
         if str(val) != str(tf.text) and not tf.isFirstResponder:
-            tf.text = str(val)
+            tf.text = get_max_static_fee_str(parent)
     @objc_method
     def onConfirmedOnly_(self, s : ObjCInstance) -> None:
         parent = gui.ElectrumGui.gui
@@ -463,3 +463,11 @@ class PrefsVC(UITableViewController):
         if not fx: return
         fx.set_fiat_address_config(s.isOn())
         parent.addressesVC.needUpdate()
+
+def get_max_static_fee_str(parent) -> str:
+    fee = parent.prefs_get_max_fee_rate()
+    parts = str(fee).replace(',','.').split('.')
+    nrzs = len(parts[1]) if len(parts) > 1 else 0
+    nrzs = max(parent.prefs_get_num_zeros(), nrzs)
+    fmt = '%0.' + str(nrzs) + 'f'
+    return fmt%(fee)
