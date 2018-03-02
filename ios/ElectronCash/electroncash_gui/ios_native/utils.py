@@ -140,7 +140,7 @@ u.completion_tmp = None
         # weird.. they didn't supply any buttons to the alert -- perhaps they want some "please wait.." style alert..?
         # clean up the unneeded instance...
         alerts_helpful_glue.autorelease()
-        alerts_helful_glue = None
+        alerts_helpful_glue = None
         #print("Removed unneded private HelpfulGlue...")
 
 # Useful for doing a "Please wait..." style screen that takes itself offscreen automatically after a delay
