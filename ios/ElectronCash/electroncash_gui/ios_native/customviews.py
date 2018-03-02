@@ -49,6 +49,8 @@ def create_transaction_detail_view(entry) -> (ObjCInstance, ObjCInstance, ObjCIn
     v = UIButton.buttonWithType_(UIButtonTypeCustom)
     but2 = v
     v.setImage_forState_(UIImage.imageNamed_("qrcode.png"), UIControlStateNormal)
+    v.setImage_forState_(UIImage.imageNamed_("qrcode_blue.png"), UIControlStateHighlighted)
+    v.setImage_forState_(UIImage.imageNamed_("qrcode_blue.png"), UIControlStateSelected)
     v.setContentHuggingPriority_forAxis_(UILayoutPriorityDefaultHigh, UILayoutConstraintAxisHorizontal)
     v.setContentHuggingPriority_forAxis_(UILayoutPriorityDefaultHigh, UILayoutConstraintAxisVertical)
     v.setContentCompressionResistancePriority_forAxis_(UILayoutPriorityDefaultLow-1, UILayoutConstraintAxisVertical)

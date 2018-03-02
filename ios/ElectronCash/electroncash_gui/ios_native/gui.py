@@ -201,6 +201,7 @@ class ElectrumGui(PrintError):
         Address.show_cashaddr(self.prefs_get_use_cashaddr())
 
         self.history = []
+        self.tx_notifications = []
         self.helper = None
         self.helperTimer = None
 
@@ -261,7 +262,7 @@ class ElectrumGui(PrintError):
         self.helper.needUpdate()
                 
         print("UI Created Ok")
-        
+
         return True
     
     def setup_toolbar(self):
@@ -424,6 +425,7 @@ class ElectrumGui(PrintError):
         elif event == 'new_transaction':
             self.historyVC.needUpdate() #enqueue update to main thread
             self.addressesVC.needUpdate() #enqueue update to main thread
+            self.tx_notifications.append(args[0])
             self.helper.needUpdate()
         elif event == 'banner':
             #todo: handle console stuff here
@@ -495,6 +497,43 @@ class ElectrumGui(PrintError):
             
         self.update_lock_icon()
         self.update_buttons_on_seed()
+        
+        if len(self.tx_notifications):
+            self.notify_transactions()
+            
+    def notify_transactions(self):
+        if not self.daemon.network or not self.daemon.network.is_connected():
+            return
+        self.print_error("Notifying GUI")
+        if len(self.tx_notifications) > 0:
+            # Combine the transactions if there are at least 2
+            num_txns = len(self.tx_notifications)
+            if num_txns >= 2:
+                total_amount = 0
+                for tx in self.tx_notifications:
+                    is_relevant, is_mine, v, fee = self.wallet.get_wallet_delta(tx)
+                    if v > 0:
+                        total_amount += v
+                self.notify(_("{} new transactions received: Total amount received in the new transactions {}")
+                            .format(num_txns, self.format_amount_and_units(total_amount)))
+                self.tx_notifications = []
+            else:
+                for tx in self.tx_notifications:
+                    if tx:
+                        self.tx_notifications.remove(tx)
+                        is_relevant, is_mine, v, fee = self.wallet.get_wallet_delta(tx)
+                        if v > 0:
+                            self.notify(_("New transaction received: {}").format(self.format_amount_and_units(v)))
+
+    def notify(self, message):
+        lines = message.split(': ')
+        utils.show_notification(message=':\n'.join(lines),
+                                duration=10.0,
+                                color=(0.0, .5, .25, 1.0), # green
+                                style=CWNotificationStyleNavigationBarNotification,
+                                multiline=bool(len(lines)))
+        
+
         
     def update_lock_icon(self):
         img = UIImage.imageNamed_("lock.png" if self.wallet.has_password() else "unlock.png").imageWithRenderingMode_(UIImageRenderingModeAlwaysOriginal)

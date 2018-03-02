@@ -65,10 +65,7 @@ class PrefsVC(UITableViewController):
 
     @objc_method
     def refresh(self):
-        try:
-            self.refreshControl.endRefreshing()
-        except:
-            pass
+        if self.refreshControl: self.refreshControl.endRefreshing()
         if self.viewIfLoaded is not None:
             self.updateCurrencies()
             self.updateExchanges()

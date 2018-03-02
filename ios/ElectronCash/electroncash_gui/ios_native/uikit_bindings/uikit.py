@@ -564,5 +564,8 @@ UIModalPresentationOverCurrentContext = 6
 UIModalPresentationPopover = 7
 UIModalPresentationNone  = -1
 
-# Local stuff
+# Locale stuff
 NSLocale = ObjCClass("NSLocale")
+
+# UIPasteboard for clipboard access
+UIPasteboard = ObjCClass("UIPasteboard")

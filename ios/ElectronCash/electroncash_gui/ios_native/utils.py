@@ -163,31 +163,24 @@ def do_in_main_thread(func : callable, *args) -> None:
     else:
         call_later(0.001, func, *args)
 
-# Useful for having python call anything (including obj-c-backed python classes) off of the mainLoop/timer
-# sometime in the future.
-# Note: unlike the other functions above -- this *can* be used from any thread and the callback will always
-#       run in the Main Thead!  This is useful for calling into the GUI from a separate thread, for example.
-# NB: ok, so it turns out, after some testing, it doesn't appear to always be safe to call this from other threads
-#     TODO: figure out why
-calllater_table = {}
+calllater_blks = {}
 def call_later(timeout : float, func : callable, *args) -> None:
-    python = '''
-import electroncash_gui.ios_native.utils as u
-
-if u.calllater_table.get(timer_ptr):
-    f = u.calllater_table[timer_ptr][0]
-    if f is not None:
-        argz = u.calllater_table[timer_ptr][1:]
-        try:
-            f(*argz)
-        except Exception as e:
-            print("ERROR in Python Eval for call_later: '%s'"%(str(e)))
-    del u.calllater_table[timer_ptr]
-'''
-    global calllater_table
-    ptr =  HelpfulGlue.evalPython_afterDelay_(python,timeout)
-    calllater_table[ptr] = [func,*args]
-
+    global calllater_blks
+    def OnTimer(t_in : objc_id) -> None:
+        global calllater_blks
+        t = ObjCInstance(t_in)
+#        print("OnTimer called with t=%d, calling func"%(t.ptr.value))
+        func(*args)
+        if calllater_blks.get(t.ptr.value,None) is not None:
+            del calllater_blks[t.ptr.value]
+#            print("Deleted block from table")
+#        else:
+#            print("Could not find block in table!")
+    blk = Block(OnTimer)
+    timer = NSTimer.timerWithTimeInterval_repeats_block_(timeout, False, blk)
+    calllater_blks[timer.ptr.value] = blk # keep it around
+    NSRunLoop.mainRunLoop().addTimer_forMode_(timer, NSDefaultRunLoopMode)
+    
 ###
 ### Modal picker stuff
 ###
@@ -297,3 +290,49 @@ def present_modal_picker(parentVC : ObjCInstance,
     HelpfulGlue.viewController_presentModalViewController_animated_python_(parentVC,helper,True,None)
     helper.needsDismiss = True
     return helper
+
+
+cw_notif_blocks = {} # need to keep the Block instances around else objc crashes.. they get reaped in dealloc below..
+class MyNotif(CWStatusBarNotification):
+    @objc_method
+    def dealloc(self) -> None:
+        global cw_notif_blocks
+        if cw_notif_blocks.get(self.ptr.value, None) is not None:
+            del cw_notif_blocks[self.ptr.value]
+            #print("deleted block")
+        #print('%ld MyNotif dealloc...'%int(self.ptr.value))
+        send_super(self, 'dealloc')
+def show_notification(message : str,
+                      duration : float = 2.0, # the duration is in seconds
+                      color : tuple = None, # color needs to have r,g,b,a components -- length 4!
+                      style : int = CWNotificationStyleStatusBarNotification,
+                      animationStyle : int = CWNotificationAnimationStyleTop,
+                      animationType : int = CWNotificationAnimationTypeReplace,
+                      onTapCallback : callable = None, # the function to call if user taps notification -- should return None and take no args
+                      multiline : bool = False) -> None:
+    global cw_notif_blocks
+    cw_notif = MyNotif.new().autorelease()
+    
+    def onTap() -> None:
+        #print("onTap")
+        if onTapCallback is not None: onTapCallback()
+        if not cw_notif.notificationIsDismissing:
+            cw_notif.dismissNotification()
+        
+    if color is None or len(color) != 4 or [c for c in color if type(c) is not float]:
+        color = (0.0, 122.0/255.0, 1.0, 1.0)
+      
+    # set default blue color (since iOS 7.1, default window tintColor is black)
+    cw_notif.notificationLabelBackgroundColor = UIColor.colorWithRed_green_blue_alpha_(*color)
+    cw_notif.notificationStyle = style
+    cw_notif.notificationAnimationInStyle = animationStyle
+    cw_notif.notificationAnimationOutStyle = animationStyle
+    cw_notif.notificationAnimationType = animationType
+    cw_notif.multiline = multiline
+    message = str(message)
+    duration = float(duration)
+    blk = Block(onTap)
+    cw_notif_blocks[cw_notif.ptr.value] = blk
+    cw_notif.notificationTappedBlock = blk
+    cw_notif.displayNotificationWithMessage_forDuration_(message, duration)
+    

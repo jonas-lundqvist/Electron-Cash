@@ -44,6 +44,8 @@
                         <button opaque="NO" tag="150" contentMode="right" verticalHuggingPriority="252" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="3fW-oz-3Eo">
                             <rect key="frame" x="347" y="42" width="78" height="24"/>
                             <state key="normal" title="Button" image="qrcode.png"/>
+                            <state key="selected" image="qrcode_blue.png"/>
+                            <state key="highlighted" image="qrcode_blue.png"/>
                         </button>
                         <textField opaque="NO" clipsSubviews="YES" tag="230" contentMode="scaleToFill" verticalHuggingPriority="253" verticalCompressionResistancePriority="751" contentHorizontalAlignment="left" contentVerticalAlignment="center" borderStyle="roundedRect" placeholder="Tap to add a description" textAlignment="natural" minimumFontSize="7" translatesAutoresizingMaskIntoConstraints="NO" id="DIP-SW-ID7">
                             <rect key="frame" x="26" y="122" width="340" height="30"/>
@@ -181,6 +183,7 @@
     </objects>
     <resources>
         <image name="qrcode.png" width="24" height="24"/>
+        <image name="qrcode_blue.png" width="24" height="24"/>
         <image name="tab_send.png" width="30" height="30"/>
     </resources>
 </document>

@@ -51,8 +51,9 @@ class TxDetail(UIViewController):
 
     @objc_method
     def onCopyBut_(self, but) -> None:
-        print("Copy button pressed")
-        utils.show_timed_alert(self,"UNIMPLEMENTED", "Copy button unimplemented -- coming soon!", 2.0)
+        #print("Copy button pressed")
+        UIPasteboard.generalPasteboard.string = self.entry[1]
+        utils.show_notification(message=_("Text copied to clipboard"))
 
     @objc_method
     def onQRBut_(self, but) -> None:
@@ -243,10 +244,7 @@ class HistoryTableVC(UITableViewController):
     @objc_method
     def refresh(self):
         self.updateHistoryFromWallet()
-        try:
-            self.refreshControl.endRefreshing()
-        except:
-            pass
+        if self.refreshControl: self.refreshControl.endRefreshing()
         self.tableView.reloadData()
         self.needsRefresh = False
 
