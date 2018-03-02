@@ -63,12 +63,11 @@ def nsattributedstring_from_html(html : str) -> ObjCInstance:
     data = ns_from_py(html.encode('utf-8'))
     return NSMutableAttributedString.alloc().initWithHTML_documentAttributes_(data,None).autorelease()
 
-callables_tmp = {}
-completion_tmp = None
-alerts_helpful_glue = None
-    
-
-def show_alert1(vc : ObjCInstance, # the viewcontroller to present the alert view in
+###################################################
+### Show modal alert
+###################################################
+alert_blks = {}
+def show_alert(vc : ObjCInstance, # the viewcontroller to present the alert view in
                title : str, # the alert title
                message : str, # the alert message
                # actions is a list of lists: each element has:  Button names, plus optional callback spec
@@ -76,20 +75,15 @@ def show_alert1(vc : ObjCInstance, # the viewcontroller to present the alert vie
                actions: list = [ ['Ok'] ],  # default has no callbacks and shows Ok button
                cancel: str = None, # name of the button you want to designate as 'Cancel' (ends up being first)
                destructive: str = None, # name of the button you want to designate as destructive (ends up being red)
-               alertStyle: int = UIAlertControllerStyleAlert,
+               style: int = UIAlertControllerStyleAlert,
                completion: callable = None, # optional completion function that gets called when alert is presented
                animated: bool = True # whether or not to animate the alert
-               ) -> None:
+               ) -> ObjCInstance:
     assert NSThread.currentThread.isMainThread
-    global alerts_helpful_glue
-    global callables_tmp
-    global completion_tmp
-    if alerts_helpful_glue is not None:
-        print("WARNING / FIXME: private HelpfulGlue instance was not None -- possible leak?")
-    alerts_helpful_glue = HelpfulGlue.new()
-    alert = UIAlertController.alertControllerWithTitle_message_preferredStyle_(title, message, alertStyle)
-    callables_tmp = {}
-    completion_tmp = None
+    global alert_blks
+    if len(alert_blks): print("WARNING: alrt_blks is not empty! Possible leak? FIXME!")
+    blklist = []
+    alert = UIAlertController.alertControllerWithTitle_message_preferredStyle_(title, message, style)
     if type(actions) is dict:
         acts = []
         for k in actions.keys():
@@ -99,8 +93,10 @@ def show_alert1(vc : ObjCInstance, # the viewcontroller to present the alert vie
                 acts.appens([k])
         actions = acts
     ct=0
+    fun_args_dict = {}
     for i,arr in enumerate(actions):
         has_callable = False
+        fun_args = []
         if type(arr) is list or type(arr) is tuple:
             actTit = arr[0]
             fun_args = arr[1:]
@@ -109,53 +105,64 @@ def show_alert1(vc : ObjCInstance, # the viewcontroller to present the alert vie
             actTit = arr
         style = UIAlertActionStyleCancel if actTit == cancel else UIAlertActionStyleDefault
         style = UIAlertActionStyleDestructive if actTit == destructive else style
-        act = alerts_helpful_glue.actionWithTitle_style_python_(actTit,style,'''
-import electroncash_gui.ios_native.utils as u
-from electroncash_gui.ios_native.custom_objc import *
-
-if u.callables_tmp.get(action_ptr):
-    arr = u.callables_tmp[action_ptr]
-    fun = arr[0]
-    fun(*arr[1:])
-u.callables_tmp = {}
-if u.alerts_helpful_glue is not None:
-    u.alerts_helpful_glue.autorelease()
-    u.alerts_helpful_glue = None
-''')
-        if has_callable:
-            callables_tmp[act.ptr.value] = fun_args
+        def onAction(act_in : objc_id) -> None:
+            global alert_blks
+            act = ObjCInstance(act_in)
+            fargs = fun_args_dict.get(act.ptr.value,[])
+            if len(fargs):
+                #print("Calling action...")
+                fargs[0](*fargs[1:])
+            alert_blks.pop(alert.ptr.value, None) # this is where we reap our stashed blks since obj-c no longer needs them
+            #print("Alert blks reaped...")
+        blk = Block(onAction)
+        blklist.append(blk)
+        act = UIAlertAction.actionWithTitle_style_handler_(actTit,style,blk)
+        fun_args_dict[act.ptr.value] = fun_args
         alert.addAction_(act)
         ct+=1
-    if completion is not None:
-        completion_tmp = completion
-        HelpfulGlue.viewController_presentModalViewController_animated_python_(vc,alert,animated,'''
-import electroncash_gui.ios_native.utils as u
-if u.completion_tmp is not None:
-    u.completion_tmp()
-u.completion_tmp = None
-''')
-    else:
-        HelpfulGlue.viewController_presentModalViewController_animated_python_(vc,alert,animated,None)
-    if not ct:
-        # weird.. they didn't supply any buttons to the alert -- perhaps they want some "please wait.." style alert..?
-        # clean up the unneeded instance...
-        alerts_helpful_glue.autorelease()
-        alerts_helpful_glue = None
-        #print("Removed unneded private HelpfulGlue...")
+    def onCompletion() -> None:
+        #print("On completion called..")
+        if completion is not None:
+            #print("Calling completion callback..")
+            completion()
+    blk = Block(onCompletion)
+    blklist.append(blk)
+    alert_blks[alert.ptr.value] = blklist # keep blocks in memory so callbacks don't crash obj-c runtime
+    vc.presentViewController_animated_completion_(alert,animated,blk)
+    return alert
 
 # Useful for doing a "Please wait..." style screen that takes itself offscreen automatically after a delay
 # (may end up using this for some info alerts.. not sure yet)
 def show_timed_alert(vc : ObjCInstance, title : str, message : str,
-                     timeout : float, alertStyle : int = UIAlertControllerStyleAlert, animated : bool = True) -> None:
+                     timeout : float, style : int = UIAlertControllerStyleAlert, animated : bool = True) -> None:
     assert NSThread.currentThread.isMainThread
-    def completionFunc(vc,animated,timeout):
-        #print("Completion on %s %s..."%(str(vc.ptr.value),str(animated)))
-        def dismisser(vc,animated):
-            #print("Dismisser on %s %s..."%(str(vc.ptr.value),str(animated)))
-            HelpfulGlue.viewController_dismissModalViewControllerAnimated_python_(vc,animated,None)
-        call_later(timeout, dismisser, vc, animated)
-    show_alert(vc=vc, title=title, message=message, actions=[], alertStyle=alertStyle, completion=lambda: completionFunc(vc,animated,timeout))
+    global alert_blks
+    alert = None
+    def completionFunc() -> None:
+        if alert is None:
+            print ("WARNING WARNING! Alert is none!!")
+        #else:
+        #    print ("ALERT IS NOT NONE.. ptr = %d!"%int(alert.ptr.value))
+        def dismisser() -> None:
+            if type(alert) is not ObjCInstance:
+                print("ERROR: alert was not ObjCInstance!!")
+                return
+            def reaper() -> None:
+                alert_blks.pop(alert.ptr.value,None)
+                #print("Timed alert blks reaped!")
+            blk = Block(reaper)
+            #print ("Dismisser: alert ptr = %d!"%int(alert.ptr.value))
+            l=alert_blks.get(alert.ptr.value,[])
+            l.append(blk)
+            alert_blks[alert.ptr.value] = l
+            vc.dismissViewControllerAnimated_completion_(animated,blk)
+        call_later(timeout, dismisser)
+    alert=show_alert(vc=vc, title=title, message=message, actions=[], style=style, completion=completionFunc)
+    #print("Showing alert with ptr=%d"%int(alert.ptr.value))
 
+###################################################
+### Calling callables later or from the main thread
+###################################################
 
 def do_in_main_thread(func : callable, *args) -> None:
     if NSThread.currentThread.isMainThread:
@@ -250,11 +257,14 @@ class UTILSModalPickerHelper(UIViewController):
         global pickerCallables
         pickerCallables.pop(self.ptr.value, None)  
         if self.viewIfLoaded is not None and self.needsDismiss:
-            HelpfulGlue.viewController_dismissModalViewControllerAnimated_python_(self,True,None)
+            self.dismissViewControllerAnimated_completion_(True, NilBlock)
         self.items = None
         self.lastSelection = None
         self.needsDismiss = False
-
+        
+###################################################
+### Modal picker
+###################################################
 def present_modal_picker(parentVC : ObjCInstance,
                          items : list,
                          selectedIndex : int = 0,
@@ -287,11 +297,13 @@ def present_modal_picker(parentVC : ObjCInstance,
         helper.lastSelection = selectedIndex
     helper.modalPresentationStyle = UIModalPresentationOverCurrentContext
     helper.disablesAutomaticKeyboardDismissal = False
-    HelpfulGlue.viewController_presentModalViewController_animated_python_(parentVC,helper,True,None)
+    parentVC.presentViewController_animated_completion_(helper, True, NilBlock)
     helper.needsDismiss = True
     return helper
 
-
+###################################################
+### Banner (status bar) notifications
+###################################################
 cw_notif_blocks = {} # need to keep the Block instances around else objc crashes.. they get reaped in dealloc below..
 class MyNotif(CWStatusBarNotification):
     @objc_method

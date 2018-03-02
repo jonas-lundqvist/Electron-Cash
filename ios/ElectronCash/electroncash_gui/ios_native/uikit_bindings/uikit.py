@@ -569,3 +569,7 @@ NSLocale = ObjCClass("NSLocale")
 
 # UIPasteboard for clipboard access
 UIPasteboard = ObjCClass("UIPasteboard")
+
+def UIKITNilBlockFun() -> None:
+    pass
+NilBlock = Block(UIKITNilBlockFun)

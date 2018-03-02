@@ -9,8 +9,6 @@ import time
 import html
 from .uikit_bindings import *
 
-#tmpBlocks = {}
-
 class SendVC(UIViewController):
     stuff = objc_property() # an NSArray of stuff to display
     qr = objc_property()
@@ -25,9 +23,6 @@ class SendVC(UIViewController):
     
     @objc_method
     def dealloc(self) -> None:
-        #global tmpBlocks
-        #if tmpBlocks.get(self.ptr.value):
-        #    del tmpBlocks[self.ptr.value]
         self.stuff = None
         self.view = None
         send_super(self, 'dealloc')
@@ -47,14 +42,7 @@ class SendVC(UIViewController):
  
     @objc_method
     def readerDidCancel_(self, reader) -> None:
-        # blocks are buggy in our current version of rubicon-objc.. they can throw a segfault if the Block object was reaped by python before being called..
-        # so we must store them in a global table.. the below illustrates that workaround.  This is here for documentation to myself, basically.
-        # Alternative is to us the HelpfulGlue method provided that works around this issue as well using evaluated python and also accepting None as a parameter...
-        #global tmpBlocks
-        #nilBlock = Block(lambda: None, None)
-        #tmpBlocks[self.ptr.value] = nilBlock
-        #self.dismissViewControllerAnimated_completion_(True,nilBlock)
-        HelpfulGlue.viewController_dismissModalViewControllerAnimated_python_(self, True,None)
+        self.dismissViewControllerAnimated_completion_(True, NilBlock)
         self.qr = None
         self.qrvc = None
         
@@ -109,6 +97,5 @@ class SendVC(UIViewController):
             self.qrvc = QRCodeReaderViewController.readerWithCancelButtonTitle_codeReader_startScanningAtLoad_showSwitchCameraButton_showTorchButton_("Cancel",self.qr,True,True,True)
             self.qrvc.modalPresentationStyle = UIModalPresentationFormSheet
             self.qrvc.delegate = self
-            # for iOS8.0+ API which uses Blocks, but rubicon blocks seem buggy so we must do this
-            HelpfulGlue.viewController_presentModalViewController_animated_python_(self,self.qrvc,True,None)
+            self.presentViewController_animated_completion_(self.qrvc, True, NilBlock)
             pass
