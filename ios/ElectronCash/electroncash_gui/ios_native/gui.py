@@ -589,7 +589,7 @@ class ElectrumGui(PrintError):
         elif but.tag == TAG_PREFS:
             print("Prefs button pushed")
             # for iOS8.0+ API which uses Blocks, but rubicon blocks seem buggy so we must do this
-            self.tabController.presentViewController_animated_completion_(self.prefsNav, True, NilBlock)
+            self.tabController.presentViewController_animated_completion_(self.prefsNav, True, None)
         elif but.tag == TAG_CASHADDR:
             print("CashAddr button pushed.. TODO, implement fully...")
             self.toggle_cashaddr_status_bar()
@@ -603,7 +603,7 @@ class ElectrumGui(PrintError):
             title = py_from_ns(presented.visibleViewController.title)
         except:
             pass
-        self.tabController.dismissViewControllerAnimated_completion_(True,NilBlock)
+        self.tabController.dismissViewControllerAnimated_completion_(True, None)
         
     def cashaddr_icon(self):
         imgname = "addr_converter_bw.png"

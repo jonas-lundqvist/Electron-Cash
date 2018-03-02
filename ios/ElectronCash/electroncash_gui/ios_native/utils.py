@@ -174,8 +174,7 @@ def call_later(timeout : float, func : Callable, *args) -> None:
     def OnTimer(t_in : objc_id) -> None:
         t = ObjCInstance(t_in)
         func(*args)
-        BlockReap(OnTimer)
-    timer = NSTimer.timerWithTimeInterval_repeats_block_(timeout, False, BlockKeepAlive(OnTimer))
+    timer = NSTimer.timerWithTimeInterval_repeats_block_(timeout, False, OnTimer)
     NSRunLoop.mainRunLoop().addTimer_forMode_(timer, NSDefaultRunLoopMode)
 
     
@@ -248,7 +247,7 @@ class UTILSModalPickerHelper(UIViewController):
         global pickerCallables
         pickerCallables.pop(self.ptr.value, None)  
         if self.viewIfLoaded is not None and self.needsDismiss:
-            self.dismissViewControllerAnimated_completion_(True, NilBlock)
+            self.dismissViewControllerAnimated_completion_(True, None)
         self.items = None
         self.lastSelection = None
         self.needsDismiss = False
@@ -288,7 +287,7 @@ def present_modal_picker(parentVC : ObjCInstance,
         helper.lastSelection = selectedIndex
     helper.modalPresentationStyle = UIModalPresentationOverCurrentContext
     helper.disablesAutomaticKeyboardDismissal = False
-    parentVC.presentViewController_animated_completion_(helper, True, NilBlock)
+    parentVC.presentViewController_animated_completion_(helper, True, None)
     helper.needsDismiss = True
     return helper
 

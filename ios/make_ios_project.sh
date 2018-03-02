@@ -108,7 +108,24 @@ if [ -n "$patches" ]; then
 	for p in $patches; do
 		patch -p 1 < $p
 	done
+else
+	echo ""
+	echo '(No patches to apply)'
+	echo ""
 fi
+
+# Get latest rubicon with all the patches from Github
+echo ""
+echo "Updating rubicon-objc to latest from cculianu repository on github..."
+echo ""
+[ -e scratch ] && rm -fr scratch
+mkdir -v scratch || exit 1
+cd scratch || exit 1
+git clone -b block_copy_dispose_helpers http://www.github.com/cculianu/rubicon-objc || echo '*** Error crabbing the latest rubicon off of github' && exit 1
+cd ..
+rm -fvr iOS/app_packages/rubicon/objc
+cp -fpvr scratch/rubicon-objc/rubicon/objc iOS/app_packages/rubicon/ || echo '*** Error copying rubicon files' && exit 1
+rm -fr scratch
 
 xcode_file="Electron-Cash.xcodeproj/project.pbxproj" 
 echo ""
