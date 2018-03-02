@@ -67,7 +67,6 @@ def nsattributedstring_from_html(html : str) -> ObjCInstance:
 ###################################################
 ### Show modal alert
 ###################################################
-alert_blks = {}
 def show_alert(vc : ObjCInstance, # the viewcontroller to present the alert view in
                title : str, # the alert title
                message : str, # the alert message
@@ -81,9 +80,6 @@ def show_alert(vc : ObjCInstance, # the viewcontroller to present the alert view
                animated: bool = True # whether or not to animate the alert
                ) -> ObjCInstance:
     assert NSThread.currentThread.isMainThread
-    global alert_blks
-    if len(alert_blks): print("WARNING: alrt_blks is not empty! Possible leak? FIXME!")
-    blklist = []
     alert = UIAlertController.alertControllerWithTitle_message_preferredStyle_(title, message, style)
     if type(actions) is dict:
         acts = []
@@ -107,17 +103,12 @@ def show_alert(vc : ObjCInstance, # the viewcontroller to present the alert view
         style = UIAlertActionStyleCancel if actTit == cancel else UIAlertActionStyleDefault
         style = UIAlertActionStyleDestructive if actTit == destructive else style
         def onAction(act_in : objc_id) -> None:
-            global alert_blks
             act = ObjCInstance(act_in)
             fargs = fun_args_dict.get(act.ptr.value,[])
             if len(fargs):
                 #print("Calling action...")
                 fargs[0](*fargs[1:])
-            alert_blks.pop(alert.ptr.value, None) # this is where we reap our stashed blks since obj-c no longer needs them
-            #print("Alert blks reaped...")
-        blk = Block(onAction)
-        blklist.append(blk)
-        act = UIAlertAction.actionWithTitle_style_handler_(actTit,style,blk)
+        act = UIAlertAction.actionWithTitle_style_handler_(actTit,style,onAction)
         fun_args_dict[act.ptr.value] = fun_args
         alert.addAction_(act)
         ct+=1
@@ -126,10 +117,7 @@ def show_alert(vc : ObjCInstance, # the viewcontroller to present the alert view
         if completion is not None:
             #print("Calling completion callback..")
             completion()
-    blk = Block(onCompletion)
-    blklist.append(blk)
-    alert_blks[alert.ptr.value] = blklist # keep blocks in memory so callbacks don't crash obj-c runtime
-    vc.presentViewController_animated_completion_(alert,animated,blk)
+    vc.presentViewController_animated_completion_(alert,animated,onCompletion)
     return alert
 
 # Useful for doing a "Please wait..." style screen that takes itself offscreen automatically after a delay
@@ -137,26 +125,10 @@ def show_alert(vc : ObjCInstance, # the viewcontroller to present the alert view
 def show_timed_alert(vc : ObjCInstance, title : str, message : str,
                      timeout : float, style : int = UIAlertControllerStyleAlert, animated : bool = True) -> None:
     assert NSThread.currentThread.isMainThread
-    global alert_blks
     alert = None
     def completionFunc() -> None:
-        if alert is None:
-            print ("WARNING WARNING! Alert is none!!")
-        #else:
-        #    print ("ALERT IS NOT NONE.. ptr = %d!"%int(alert.ptr.value))
         def dismisser() -> None:
-            if type(alert) is not ObjCInstance:
-                print("ERROR: alert was not ObjCInstance!!")
-                return
-            def reaper() -> None:
-                alert_blks.pop(alert.ptr.value,None)
-                #print("Timed alert blks reaped!")
-            blk = Block(reaper)
-            #print ("Dismisser: alert ptr = %d!"%int(alert.ptr.value))
-            l=alert_blks.get(alert.ptr.value,[])
-            l.append(blk)
-            alert_blks[alert.ptr.value] = l
-            vc.dismissViewControllerAnimated_completion_(animated,blk)
+            vc.dismissViewControllerAnimated_completion_(animated,None)
         call_later(timeout, dismisser)
     alert=show_alert(vc=vc, title=title, message=message, actions=[], style=style, completion=completionFunc)
     #print("Showing alert with ptr=%d"%int(alert.ptr.value))
@@ -294,16 +266,6 @@ def present_modal_picker(parentVC : ObjCInstance,
 ###################################################
 ### Banner (status bar) notifications
 ###################################################
-cw_notif_blocks = {} # need to keep the Block instances around else objc crashes.. they get reaped in dealloc below..
-class MyNotif(CWStatusBarNotification):
-    @objc_method
-    def dealloc(self) -> None:
-        global cw_notif_blocks
-        if cw_notif_blocks.pop(self.ptr.value, None) is not None:
-            #print("deleted block")
-            pass
-        #print('%ld MyNotif dealloc...'%int(self.ptr.value))
-        send_super(self, 'dealloc')
 def show_notification(message : str,
                       duration : float = 2.0, # the duration is in seconds
                       color : tuple = None, # color needs to have r,g,b,a components -- length 4!
@@ -312,8 +274,7 @@ def show_notification(message : str,
                       animationType : int = CWNotificationAnimationTypeReplace,
                       onTapCallback : Callable[[],None] = None, # the function to call if user taps notification -- should return None and take no args
                       multiline : bool = False) -> None:
-    global cw_notif_blocks
-    cw_notif = MyNotif.new().autorelease()
+    cw_notif = CWStatusBarNotification.new().autorelease()
     
     def onTap() -> None:
         #print("onTap")
@@ -333,8 +294,6 @@ def show_notification(message : str,
     cw_notif.multiline = multiline
     message = str(message)
     duration = float(duration)
-    blk = Block(onTap)
-    cw_notif_blocks[cw_notif.ptr.value] = blk
-    cw_notif.notificationTappedBlock = blk
+    cw_notif.notificationTappedBlock = onTap
     cw_notif.displayNotificationWithMessage_forDuration_(message, duration)
     
