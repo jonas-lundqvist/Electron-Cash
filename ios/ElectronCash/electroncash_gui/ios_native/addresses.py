@@ -1,6 +1,5 @@
 from . import utils
 from . import gui
-from . import heartbeat
 from electroncash import WalletStorage, Wallet
 from electroncash.util import timestamp_to_datetime
 import electroncash.exchange_rate
@@ -60,13 +59,10 @@ class AddressesTableVC(UITableViewController):
         self.refreshControl.addTarget_action_forControlEvents_(self,SEL('needUpdate'), UIControlEventValueChanged)
         self.updateAddressesFromWallet()
         
-        heartbeat.Add(self, 'doRefreshIfNeeded')
-
         return self
 
     @objc_method
     def dealloc(self) -> None:
-        heartbeat.Remove(self, 'doRefreshIfNeeded')
         self.needsRefresh = None
         send_super(self, 'dealloc')
 
@@ -190,7 +186,13 @@ class AddressesTableVC(UITableViewController):
 
     @objc_method
     def needUpdate(self):
+        if self.needsRefresh: return
         self.needsRefresh = True
+        self.retain()
+        def inMain() -> None:
+            self.doRefreshIfNeeded()
+            self.autorelease()
+        utils.do_in_main_thread(inMain)
 
     # This method runs in the main thread as it's enqueue using our hacky "Heartbeat" mechanism/workaround for iOS
     @objc_method

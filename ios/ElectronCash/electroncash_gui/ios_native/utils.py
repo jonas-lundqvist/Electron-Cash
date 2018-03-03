@@ -138,11 +138,12 @@ def show_timed_alert(vc : ObjCInstance, title : str, message : str,
 ###################################################
 ### Calling callables later or from the main thread
 ###################################################
-def do_in_main_thread(func : Callable, *args) -> None:
+def do_in_main_thread(func : Callable, *args) -> Any:
     if NSThread.currentThread.isMainThread:
-        func(*args)
+        return func(*args)
     else:
         call_later(0.001, func, *args)
+    return None
 
 def call_later(timeout : float, func : Callable, *args) -> None:
     def OnTimer(t_in : objc_id) -> None:

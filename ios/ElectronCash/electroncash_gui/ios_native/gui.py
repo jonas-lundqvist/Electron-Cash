@@ -117,12 +117,10 @@ class GuiHelper(NSObject):
         self.butsSeed = []
         self.butsPrefs = []
         self.butsSend = []
-        heartbeat.Add(self, 'doUpdateIfNeeded')
         return self
     
     @objc_method
     def dealloc(self) -> None:
-        heartbeat.Remove(self, 'doUpdateIfNeeded')
         self.updateNeeded = None
         self.butsStatus = None
         self.butsStatusLabel = None
@@ -145,7 +143,13 @@ class GuiHelper(NSObject):
 
     @objc_method
     def needUpdate(self):
+        if self.updateNeeded: return
         self.updateNeeded = True
+        self.retain()
+        def inMain() -> None:
+            self.doUpdateIfNeeded()
+            self.autorelease()
+        utils.do_in_main_thread(inMain)
         
     @objc_method
     def onToolButton_(self,but) -> None:
@@ -206,6 +210,7 @@ class ElectrumGui(PrintError):
         self.helperTimer = None
 
     def createAndShowUI(self):
+        heartbeat.Start()
         self.helper = GuiHelper.alloc().init()
 
         self.window = UIWindow.alloc().initWithFrame_(UIScreen.mainScreen.bounds)
@@ -378,7 +383,8 @@ class ElectrumGui(PrintError):
         self.window = None
         self.helperTimer = None
         self.helper.release()
-        self.helper = None        
+        self.helper = None
+        heartbeat.Stop()
     
     def on_rotated(self): # called by PythonAppDelegate after screen rotation
         #update status bar label width

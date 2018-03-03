@@ -44,7 +44,6 @@ class HeartBeat(NSObject):
             inv = en.nextObject()
         time.sleep(0.001) # give other python "threads" a chance to run..
 
-
     @objc_method
     def addCallback(self, target, selNameStr):
         inv = NSInvocation.invocationWithMethodSignature_(NSMethodSignature.signatureWithObjCTypes_(b'v@:'))
