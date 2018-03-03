@@ -78,7 +78,12 @@ if [ -f "${infoplist}" ]; then
 	echo ""
 	plutil -insert "NSAppTransportSecurity" -xml '<dict><key>NSAllowsArbitraryLoads</key><true/></dict>' -- ${infoplist} 
 	if [ "$?" != "0" ]; then
-		echo "Encountered error adding custom keys to plist!"
+		echo "Encountered error adding custom key NSAppTransportSecurity to plist!"
+		exit 1
+	fi
+	plutil -insert "UIBackgroundModes" -xml '<array><string>fetch</string></array>' -- ${infoplist}
+	if [ "$?" != "0" ]; then
+		echo "Encountered error adding custom key UIBackgroundModes to plist!"
 		exit 1
 	fi
 	longver=`git describe --tags`

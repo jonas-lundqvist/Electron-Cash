@@ -34,7 +34,7 @@ class HeartBeat(NSObject):
         send_super(self, 'dealloc')
 
     @objc_method
-    def tick_(self, t):
+    def tick_(self, t : ObjCInstance) -> None:
         if not NSThread.isMainThread:
             print("WARNING: HeartBeat Timer Tick is not in the process's main thread! FIXME!")
         en = self.funcs.objectEnumerator()
@@ -65,8 +65,13 @@ class HeartBeat(NSObject):
 
     @objc_method
     def start(self):
+        
+        def OnTimer(t : objc_id) -> None:
+            self.tick_(ObjCInstance(t))
+        
         self.stop()
-        self.tickTimer = NSTimer.scheduledTimerWithTimeInterval_target_selector_userInfo_repeats_(0.030, self, SEL(b'tick:'), "tickTimer", True)
+        self.tickTimer = NSTimer.timerWithTimeInterval_repeats_block_(0.030, True, OnTimer)
+        NSRunLoop.mainRunLoop().addTimer_forMode_(self.tickTimer, NSDefaultRunLoopMode)
 
     @objc_method
     def stop(self):
@@ -89,6 +94,10 @@ def Stop():
         singleton.stop()
         singleton.autorelease()
         singleton = None
+        
+def IsRunning() -> bool:
+    global singleton
+    return bool(singleton is not None)
         
 def Add(target, selNameStr):
     if singleton is None:

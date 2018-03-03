@@ -1,6 +1,5 @@
 from . import utils
 from . import gui
-from . import heartbeat
 from electroncash import WalletStorage, Wallet
 from electroncash.util import timestamp_to_datetime
 from electroncash.i18n import _

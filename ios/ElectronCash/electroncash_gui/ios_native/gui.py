@@ -36,7 +36,6 @@ try:
     from .uikit_bindings import *
 except Exception as e:
     sys.exit("Error: Could not import iOS libs: %s"%str(e))
-from . import heartbeat
 from . import utils
 from . import history
 from . import addresses
@@ -210,7 +209,6 @@ class ElectrumGui(PrintError):
         self.helperTimer = None
 
     def createAndShowUI(self):
-        heartbeat.Start()
         self.helper = GuiHelper.alloc().init()
 
         self.window = UIWindow.alloc().initWithFrame_(UIScreen.mainScreen.bounds)
@@ -384,7 +382,6 @@ class ElectrumGui(PrintError):
         self.helperTimer = None
         self.helper.release()
         self.helper = None
-        heartbeat.Stop()
     
     def on_rotated(self): # called by PythonAppDelegate after screen rotation
         #update status bar label width

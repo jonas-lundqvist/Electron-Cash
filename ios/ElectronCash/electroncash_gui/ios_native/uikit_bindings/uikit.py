@@ -570,3 +570,20 @@ NSLocale = ObjCClass("NSLocale")
 
 # UIPasteboard for clipboard access
 UIPasteboard = ObjCClass("UIPasteboard")
+
+
+# Background mode stuff
+UIBackgroundFetchResultNewData = 0
+UIBackgroundFetchResultNoData = 1
+UIBackgroundFetchResultFailed = 2
+UIBackgroundRefreshStatusRestricted = 0 #, //< unavailable on this system due to device configuration; the user cannot enable the feature
+UIBackgroundRefreshStatusDenied = 1 #,     //< explicitly disabled by the user for this application
+UIBackgroundRefreshStatusAvailable = 2 #   //< enabled for this application
+UIApplicationStateActive = 0 #,
+UIApplicationStateInactive = 1 #,
+UIApplicationStateBackground = 2
+
+UIBackgroundTaskInvalid = c_ulong.in_dll(uikit, "UIBackgroundTaskInvalid").value
+UIMinimumKeepAliveTimeout = c_double.in_dll(uikit, "UIMinimumKeepAliveTimeout").value
+UIApplicationBackgroundFetchIntervalMinimum = c_double.in_dll(uikit, "UIApplicationBackgroundFetchIntervalMinimum").value
+UIApplicationBackgroundFetchIntervalNever = c_double.in_dll(uikit, "UIApplicationBackgroundFetchIntervalNever").value
