@@ -13,7 +13,7 @@ SECTION_TITLES = [ 'Fees', 'Transactions', 'Appearance', 'Fiat',
                   #'Identity'
                   ]
 
-TAG_MULTIPLE_CHANGE_CELL = 1337001
+TAG_MULTIPLE_CHANGE_CELL = 12345
 TAG_CONTENTVIEW = 100
 TAG_BASE_UNIT = 302
 TAG_NZ = 303
@@ -32,6 +32,9 @@ class PrefsVC(UITableViewController):
     
     currencies = objc_property() # NSArray of strings...
     exchanges = objc_property() # NSArray of strings...
+    
+    normalButtonColor = objc_property() # UIColor instance
+    warnButtonColor = objc_property()
         
     @objc_method
     def init(self) -> ObjCInstance:
@@ -40,6 +43,8 @@ class PrefsVC(UITableViewController):
         self.closeButton = None
         self.currencies = None
         self.exchanges = None
+        self.normalButtonColor = None
+        self.warnButtonColor = UIColor.colorWithRed_green_blue_alpha_(0.8,0.0,0.0,1.0)
         self.updateCurrencies()
         self.updateExchanges()
         return self
@@ -52,16 +57,12 @@ class PrefsVC(UITableViewController):
         
     @objc_method
     def dealloc(self) -> None:
+        self.warnButtonColor = None
+        self.normalButtonColor = None
         self.closeButton = None
         self.currencies = None
         self.exchanges = None
         send_super(self, 'dealloc')
-
-    @objc_method
-    def multipleChangeCell(self) -> ObjCInstance:
-        if self.viewIfLoaded:
-            return self.viewIfLoaded.viewWithTag_(TAG_MULTIPLE_CHANGE_CELL)
-        return None
 
     @objc_method
     def refresh(self):
@@ -73,15 +74,6 @@ class PrefsVC(UITableViewController):
 
     @objc_method
     def viewDidAppear_(self, animated : bool) -> None:
-        '''
-        cell = self.multipleChangeCell()
-        if cell is None:
-            print("WARNING: multipleChanceCell could not be polished! FIXME!")
-            return
-        parent = gui.ElectrumGui.gui
-        b1, enabled = parent.prefs_get_multiple_change()
-        utils.uiview_set_enabled(cell, enabled)
-        '''
         # do polish here?
         send_super(self,'viewDidAppear:', animated, arg_types=[c_bool])
 
@@ -90,7 +82,18 @@ class PrefsVC(UITableViewController):
         parent = gui.ElectrumGui.gui
         self.currencies = [_('None')]
         if not parent.daemon.fx: return
-        self.currencies = [self.currencies[0],*sorted(parent.daemon.fx.get_currencies(parent.daemon.fx.get_history_config()))]
+        currencies = [self.currencies[0],*sorted(parent.daemon.fx.get_currencies(parent.daemon.fx.get_history_config()))]
+        special = [ 'USD', 'EUR', 'GBP', 'CAD', 'AUD' ]
+        i = 1
+        for s in special:
+            try:
+                ix = currencies.index(s)
+                currencies.pop(ix)
+                currencies.insert(i, s)
+                i += 1
+            except:
+                pass
+        self.currencies = currencies
 
     @objc_method
     def updateExchanges(self):
@@ -103,24 +106,11 @@ class PrefsVC(UITableViewController):
         if b:
             h = fx.get_history_config()
             c = fx.get_currency()
-            self.exchanges = fx.get_exchanges_by_ccy(c, h)
+            self.exchanges = sorted(fx.get_exchanges_by_ccy(c, h))
         else:
-            self.exchanges = fx.get_exchanges_by_ccy('USD', False)
-        #ex_combo.clear()
-        #ex_combo.addItems(sorted(exchanges))
-        #ex_combo.setCurrentIndex(ex_combo.findText(self.fx.config_exchange()))
-
-        '''
-        def update_history_cb():
-            if not self.fx: return
-            hist_checkbox.setChecked(self.fx.get_history_config())
-            hist_checkbox.setEnabled(self.fx.is_enabled())
-
-        def update_fiat_address_cb():
-            if not self.fx: return
-            fiat_address_checkbox.setChecked(self.fx.get_fiat_address_config())
-
-        '''
+            self.exchanges = sorted(fx.get_exchanges_by_ccy('USD', False))
+        
+        self.setFiatExchangeButtonText_(None)
     
     ## TableView methods below...   
     @objc_method
@@ -195,13 +185,11 @@ class PrefsVC(UITableViewController):
                 if s.allTargets.count <= 0:
                     s.addTarget_action_forControlEvents_(self, SEL(b'onUseChange:'), UIControlEventValueChanged)
             elif row == 1:
-                cell.contentView.tag = TAG_MULTIPLE_CHANGE_CELL
                 l.text = _("Use multiple change addresses")
+                cell.contentView.tag = TAG_MULTIPLE_CHANGE_CELL
                 b1, enabled = parent.prefs_get_multiple_change()
                 s.on = b1
-                # for some reason this needs to be called later, not here during setup :/
-                utils.call_later(0.500, lambda : utils.uiview_set_enabled(self.multipleChangeCell(), enabled))
-                #utils.uiview_set_enabled(self.multipleChangeCell(), enabled)
+                utils.uiview_set_enabled(cell.contentView, enabled)
                 if s.allTargets.count <= 0:
                     s.addTarget_action_forControlEvents_(self, SEL(b'onUseMultiple:'), UIControlEventValueChanged)
             elif row == 2:
@@ -225,7 +213,7 @@ class PrefsVC(UITableViewController):
                 if b is not None:
                     b.tag = TAG_NZ
                     if b.allTargets.count <= 0:
-                        b.addTarget_action_forControlEvents_(self, SEL(b'onNZBut:'), UIControlEventTouchUpInside)
+                        b.addTarget_action_forControlEvents_(self, SEL(b'onNZBut:'), UIControlEventPrimaryActionTriggered)
                     nr = len(self.getNumZerosList())
                     nz_prefs = parent.prefs_get_num_zeros()
                     if nz_prefs >= nr:
@@ -240,7 +228,7 @@ class PrefsVC(UITableViewController):
                     b.tag = TAG_BASE_UNIT
                     b.setTitle_forState_(parent.base_unit(),UIControlStateNormal)
                     if b.allTargets.count <= 0:
-                        b.addTarget_action_forControlEvents_(self, SEL(b'onBaseUnitBut:'), UIControlEventTouchUpInside)
+                        b.addTarget_action_forControlEvents_(self, SEL(b'onBaseUnitBut:'), UIControlEventPrimaryActionTriggered)
             elif row == 3:
                 l = cell.viewWithTag_(1)
                 b = cell.viewWithTag_(2)
@@ -254,7 +242,7 @@ class PrefsVC(UITableViewController):
                     if beprefs not in be:  beprefs = be[0]
                     b.setTitle_forState_(beprefs,UIControlStateNormal)
                     if b.allTargets.count <= 0:
-                        b.addTarget_action_forControlEvents_(self, SEL(b'onBlockExplorerBut:'), UIControlEventTouchUpInside)
+                        b.addTarget_action_forControlEvents_(self, SEL(b'onBlockExplorerBut:'), UIControlEventPrimaryActionTriggered)
         elif secName == 'Fiat':
             if row == 0:
                 l = cell.viewWithTag_(1)
@@ -267,7 +255,7 @@ class PrefsVC(UITableViewController):
                     curr = fx.get_currency() if fx.is_enabled() else _('None')
                     b.setTitle_forState_(curr, UIControlStateNormal)
                     if b.allTargets.count <= 0:
-                        b.addTarget_action_forControlEvents_(self, SEL(b'onFiatCurrencyBut:'), UIControlEventTouchUpInside)                        
+                        b.addTarget_action_forControlEvents_(self, SEL(b'onFiatCurrencyBut:'), UIControlEventPrimaryActionTriggered)                        
             elif row == 1:
                 l = cell.viewWithTag_(1)
                 s = cell.viewWithTag_(2)
@@ -275,6 +263,8 @@ class PrefsVC(UITableViewController):
                 s.on = bool(fx and fx.get_history_config())
                 if s.allTargets.count <= 0:
                     s.addTarget_action_forControlEvents_(self, SEL(b'onFiatHistory:'), UIControlEventValueChanged)
+                enabled = bool(bool(fx) and fx.is_enabled())
+                utils.uiview_set_enabled(cell.contentView, enabled)
             elif row == 2:
                 l = cell.viewWithTag_(1)
                 s = cell.viewWithTag_(2)
@@ -282,6 +272,8 @@ class PrefsVC(UITableViewController):
                 s.on = bool(fx and fx.get_fiat_address_config())
                 if s.allTargets.count <= 0:
                     s.addTarget_action_forControlEvents_(self, SEL(b'onFiatBal:'), UIControlEventValueChanged)
+                enabled = bool(bool(fx) and fx.is_enabled())
+                utils.uiview_set_enabled(cell.contentView, enabled)
             elif row == 3:
                 l = cell.viewWithTag_(1)
                 b = cell.viewWithTag_(2)
@@ -289,11 +281,26 @@ class PrefsVC(UITableViewController):
                 l.text = _('Source')
                 if b is not None:
                     b.tag = TAG_FIAT_EXCHANGE
-                    ex = fx.config_exchange() if fx else _('None')
-                    b.setTitle_forState_(ex, UIControlStateNormal)
+                    b.setTitle_forState_(_("None"), UIControlStateNormal)
+                    self.setFiatExchangeButtonText_(b)
                     if b.allTargets.count <= 0:
-                        b.addTarget_action_forControlEvents_(self, SEL(b'onFiatExchangeBut:'), UIControlEventTouchUpInside)                        
-                
+                        b.addTarget_action_forControlEvents_(self, SEL(b'onFiatExchangeBut:'), UIControlEventPrimaryActionTriggered)                        
+   
+    @objc_method
+    def setFiatExchangeButtonText_(self, b : ObjCInstance) -> None:
+        b = self.tableView.viewWithTag_(TAG_FIAT_EXCHANGE) if b is None else b
+        if b is None: return
+        fx = gui.ElectrumGui.gui.daemon.fx
+        ex = fx.config_exchange() if fx else None
+        ex = ex if ex in self.exchanges else None
+        if ex is None:
+            ex = _("None")
+            if self.normalButtonColor is None: self.normalButtonColor = b.titleColorForState_(UIControlStateNormal)
+            b.setTitleColor_forState_(self.warnButtonColor,UIControlStateNormal)
+        elif self.normalButtonColor is not None:
+            b.setTitleColor_forState_(self.normalButtonColor,UIControlStateNormal)            
+        b.setTitle_forState_(str(ex), UIControlStateNormal)
+        
     @objc_method
     def createCellForSection_row_(self, secName_oc : ObjCInstance, row : int ) -> ObjCInstance:
         secName = py_from_ns(secName_oc)
@@ -384,7 +391,7 @@ class PrefsVC(UITableViewController):
         ccy = fx.get_currency()
         ccys = py_from_ns(self.currencies)
         idx = [i for i,v in enumerate(ccys) if v == ccy]
-        idx = 0 if len(idx) <= 0 else idx[0]
+        idx = 0 if len(idx) <= 0 or not bool(fx.is_enabled()) else idx[0]
         def onOk(row : int) -> None:
             is_en = bool(row)
             ccy = ccys[row] if is_en else None
@@ -410,8 +417,7 @@ class PrefsVC(UITableViewController):
             ex = exs[choice]
             if fx and fx.is_enabled() and ex and ex != fx.exchange.name():
                 fx.set_exchange(ex)
-            b = self.view.viewWithTag_(TAG_FIAT_EXCHANGE)
-            if b is not None: b.setTitle_forState_(ex,UIControlStateNormal)
+            self.setFiatExchangeButtonText_(None)
         if len(exs) and fx:    
             utils.present_modal_picker(parentVC = self, items = exs, selectedIndex = int(idx),
                                        okCallback = onOk, okButtonTitle = _("OK"), cancelButtonTitle = _("Cancel"))
@@ -436,7 +442,9 @@ class PrefsVC(UITableViewController):
         parent = gui.ElectrumGui.gui
         parent.prefs_set_use_change(bool(s.isOn()))
         b1, enabled = parent.prefs_get_multiple_change()
-        utils.uiview_set_enabled(self.multipleChangeCell(), enabled)
+        if self.viewIfLoaded:
+            cell = self.viewIfLoaded.viewWithTag_(TAG_MULTIPLE_CHANGE_CELL)
+            utils.uiview_set_enabled(cell, enabled)
     @objc_method
     def onUseMultiple_(self, s: ObjCInstance) -> None:
         parent = gui.ElectrumGui.gui

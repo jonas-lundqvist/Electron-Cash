@@ -51,6 +51,8 @@ def uiview_set_enabled(view : ObjCInstance, b : bool) -> None:
     if view is None: return
     view.userInteractionEnabled = b
     view.alpha = float(1.0 if b else 0.3)
+    view.setNeedsDisplay()
+
 
 # NB: This isn't normally called since you need to specify the full pathname of the resource you want, instead
 #     if you need images, call uiimage_get, etc.  This does NOT search recursively, since NSBundle sucks.
@@ -250,8 +252,8 @@ def present_modal_picker(parentVC : ObjCInstance,
     if cancelButtonTitle is not None and cancelLbl is not None: cancelLbl.text = cancelButtonTitle
     helper.view = mpv
     helper.items = items
-    okBut.addTarget_action_forControlEvents_(helper, SEL(b'onOk:'), UIControlEventTouchUpInside)
-    cancelBut.addTarget_action_forControlEvents_(helper, SEL(b'onCancel:'), UIControlEventTouchUpInside)
+    okBut.addTarget_action_forControlEvents_(helper, SEL(b'onOk:'), UIControlEventPrimaryActionTriggered)
+    cancelBut.addTarget_action_forControlEvents_(helper, SEL(b'onCancel:'), UIControlEventPrimaryActionTriggered)
     p.delegate = helper
     p.dataSource = helper
     if okCallback is not None: pickerCallables[helper.ptr.value] = okCallback

@@ -86,7 +86,7 @@ class SendVC(UIViewController):
         
         # Check for QRCode availability and if not available, destroy the button
         but = self.view.viewWithTag_(150)
-        but.addTarget_action_forControlEvents_(self, SEL(b'onQRBut:'), UIControlEventTouchUpInside)
+        but.addTarget_action_forControlEvents_(self, SEL(b'onQRBut:'), UIControlEventPrimaryActionTriggered)
 
     @objc_method
     def onQRBut_(self, but):

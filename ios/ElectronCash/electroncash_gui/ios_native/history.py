@@ -35,8 +35,8 @@ class TxDetail(UIViewController):
     @objc_method
     def loadView(self) -> None:
         self.view, butCopy, butQR, descrTF = customviews.create_transaction_detail_view(self.entry)
-        butCopy.addTarget_action_forControlEvents_(self, SEL(b'onCopyBut:'), UIControlEventTouchUpInside)
-        butQR.addTarget_action_forControlEvents_(self, SEL(b'onQRBut:'), UIControlEventTouchUpInside)
+        butCopy.addTarget_action_forControlEvents_(self, SEL(b'onCopyBut:'), UIControlEventPrimaryActionTriggered)
+        butQR.addTarget_action_forControlEvents_(self, SEL(b'onQRBut:'), UIControlEventPrimaryActionTriggered)
         if descrTF is not None:
             descrTF.delegate = self
 

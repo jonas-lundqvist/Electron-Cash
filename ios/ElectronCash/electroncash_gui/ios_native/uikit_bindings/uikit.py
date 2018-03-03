@@ -114,7 +114,7 @@ UIControlEventTouchUpOutside = 1 << 7
 UIControlEventTouchCancel = 1 << 8
 
 UIControlEventValueChanged = 1 << 12
-
+UIControlEventPrimaryActionTriggered = 1 << 13 # for buttons, etc
 UIControlEventEditingDidBegin = 1 << 16
 UIControlEventEditingChanged = 1 << 17
 UIControlEventEditingDidEnd = 1 << 18
