@@ -412,21 +412,21 @@ class ElectrumGui(PrintError):
                 pass
             
     def on_history(self, b):
-        print("ON HISTORY (IsMainThread: %s)"%(str(NSThread.currentThread.isMainThread)))
+        utils.NSLog("ON HISTORY (IsMainThread: %s)",str(NSThread.currentThread.isMainThread))
         assert self.historyVC is not None
         self.historyVC.needUpdate()
         self.helper.needUpdate()
         
     def on_quotes(self, event, *args):
-        print("ON QUOTES (IsMainThread: %s)"%(str(NSThread.currentThread.isMainThread)))        
+        utils.NSLog("ON QUOTES (IsMainThread: %s)",str(NSThread.currentThread.isMainThread))        
         self.historyVC.needUpdate()
         self.addressesVC.needUpdate()
         self.helper.needUpdate()
             
     def on_network(self, event, *args):
-        print ("ON NETWORK: %s (IsMainThread: %s)"%(event,str(NSThread.currentThread.isMainThread)))
+        utils.NSLog("ON NETWORK: %s (IsMainThread: %s)",event,str(NSThread.currentThread.isMainThread))
         if not self.daemon:
-            print("(Returning early.. daemon stopped)")
+            utils.NSLog("(Returning early.. daemon stopped)")
             return
         assert self.historyVC is not None
         if event == 'updated':
@@ -453,9 +453,9 @@ class ElectrumGui(PrintError):
             self.print_error("unexpected network message:", event, args)
             
     def on_status_update(self):
-        print ("ON STATUS UPDATE (IsMainThread: %s)"%(str(NSThread.currentThread.isMainThread)))
+        utils.NSLog("ON STATUS UPDATE (IsMainThread: %s)",str(NSThread.currentThread.isMainThread))
         if not self.wallet:
-            print("(Returning early.. wallet stopped)")
+            utils.NSLog("(Returning early.. wallet stopped)")
             return
 
         if self.daemon.network is None or not self.daemon.network.is_running():

@@ -300,4 +300,40 @@ def show_notification(message : str,
     duration = float(duration)
     cw_notif.notificationTappedBlock = onTap
     cw_notif.displayNotificationWithMessage_forDuration_(message, duration)
-    
+ 
+ #######################################################
+ ### NSLog emulation -- python wrapper for NSLog
+ #######################################################
+try:
+    import rubicon.objc.runtime
+    runtime.Foundation.NSLog.restype = c_int
+    runtime.Foundation.NSLog.argtypes = [c_void_p,c_void_p]
+    _pct_at = ns_from_py("%@").retain(convert_result=False)
+except Exception as e:
+    print("Could not find NSLog, utils.NSLog will just use regular python print. Exception was: %s"%(str(e)))
+def NSLog(fmt : str, *args) -> int:
+    args = list(args)
+    if isinstance(fmt, ObjCInstance):
+        fmt = str(py_from_ns(fmt))
+    fmt = fmt.replace("%@","%s")
+    retval = 0
+    for i,a in enumerate(args):
+        if isinstance(a, ObjCInstance):
+            try:
+                args[i] = str(a.description)
+            except Exception as e0:
+                #print("Exception on description call: %s"%str(e0))
+                try:
+                    args[i] = str(py_from_ns(a))
+                except Exception as e:
+                    print("Cannot convert NSLog argument %d to str: %s"%(i+1,str(e)))
+                    args[i] = "<Unknown>"
+    try:
+        formatted = ns_from_py("{}".format(fmt%tuple(args)))
+        retval = runtime.Foundation.NSLog(_pct_at, formatted.ptr)        
+    except Exception as e:
+        print("<NSLog Emul Exception> : %s"%(str(e)))
+        formatted = "[NSLog Unavailable] {}".format(fmt%tuple(args))
+        print(formatted)
+        retval = len(formatted)
+    return retval

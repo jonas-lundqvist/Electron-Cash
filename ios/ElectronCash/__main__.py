@@ -6,6 +6,7 @@ from electroncash_gui.ios_native.uikit_bindings import *
 import sys
 
 if __name__ == '__main__':
+    
     argc = c_int(len(sys.argv))
     argv = (c_char_p * (argc.value + 1))()
     for i,a in enumerate(sys.argv):
