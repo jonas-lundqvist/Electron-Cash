@@ -145,14 +145,14 @@ def do_in_main_thread(func : Callable, *args) -> Any:
         call_later(0.001, func, *args)
     return None
 
-def call_later(timeout : float, func : Callable, *args) -> None:
+def call_later(timeout : float, func : Callable, *args) -> ObjCInstance:
     def OnTimer(t_in : objc_id) -> None:
         t = ObjCInstance(t_in)
         func(*args)
     timer = NSTimer.timerWithTimeInterval_repeats_block_(timeout, False, OnTimer)
     NSRunLoop.mainRunLoop().addTimer_forMode_(timer, NSDefaultRunLoopMode)
+    return timer
 
-    
 ###
 ### Modal picker stuff
 ###

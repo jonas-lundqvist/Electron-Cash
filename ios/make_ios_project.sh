@@ -81,11 +81,11 @@ if [ -f "${infoplist}" ]; then
 		echo "Encountered error adding custom key NSAppTransportSecurity to plist!"
 		exit 1
 	fi
-	plutil -insert "UIBackgroundModes" -xml '<array><string>fetch</string></array>' -- ${infoplist}
-	if [ "$?" != "0" ]; then
-		echo "Encountered error adding custom key UIBackgroundModes to plist!"
-		exit 1
-	fi
+	#plutil -insert "UIBackgroundModes" -xml '<array><string>fetch</string></array>' -- ${infoplist}
+	#if [ "$?" != "0" ]; then
+	#	echo "Encountered error adding custom key UIBackgroundModes to plist!"
+	#	exit 1
+	#fi
 	longver=`git describe --tags`
 	if [ -n "$longver" ]; then
 		shortver=`echo "$longver" | cut -f 1 -d -`

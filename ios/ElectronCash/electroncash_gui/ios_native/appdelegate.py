@@ -7,47 +7,14 @@ from . import heartbeat
 from . import utils
 import ElectronCash.app
 
-bgTask = UIBackgroundTaskInvalid
-
-def cleanup_possible_bg_task_stuff() -> str:
-    global bgTask
-    msg = ""
-    if heartbeat.IsRunning():
-        heartbeat.Stop()
-        msg += ", sent stop to heartbeat"
-    else:
-        msg += ", heartbeat was not running"
-    if bgTask != UIBackgroundTaskInvalid:
-        UIApplication.sharedApplication.endBackgroundTask_(bgTask)
-        bgTask = UIBackgroundTaskInvalid
-        msg += ", told UIKit to end our bgTask."
-    else:
-        msg += ", we did not have a bgTask active."
-    return msg
-    
-def on_bg_task_expiration() -> None:
-    msg = "Background: Expiration handler called"
-    msg += cleanup_possible_bg_task_stuff()
-        
-    print(msg)
-
-def startup_bg_task_stuff(application : ObjCInstance) -> None:
-    print("Background: Entered background, notifying iOS about bgTask, starting up heartbeat.")
-    global bgTask
-    wasRunning = heartbeat.IsRunning()
-    bgTask = application.beginBackgroundTaskWithName_expirationHandler_(at("Electron_Cash_Background_Task"), on_bg_task_expiration)        
-    heartbeat.Start() # hopefully will cause us to continue to download and do stuff..
-    if wasRunning: print("Background: Heartbeat was already active in foreground. FIXME!")    
-
-
 class PythonAppDelegate(UIResponder):
     
     @objc_method
     def application_willFinishLaunchingWithOptions_(self, application : ObjCInstance, launchOptions : ObjCInstance) -> bool:
         # tell iOS that our app refreshes content in the background
-        application.setMinimumBackgroundFetchInterval_(UIApplicationBackgroundFetchIntervalMinimum)
-        bgStatus = "Enabled for this app." if UIBackgroundRefreshStatusAvailable == int(application.backgroundRefreshStatus) else "DISABLED"
-        print("Background refresh status: %s\nBackground fetch minimum interval: %f s\nMinimum Keep Alive Timeout: %f s"%(bgStatus,UIApplicationBackgroundFetchIntervalMinimum,UIMinimumKeepAliveTimeout))
+        #application.setMinimumBackgroundFetchInterval_(UIApplicationBackgroundFetchIntervalMinimum)
+        #bgStatus = "Enabled for this app." if UIBackgroundRefreshStatusAvailable == int(application.backgroundRefreshStatus) else "DISABLED"
+        #print("Background refresh status: %s\nBackground fetch minimum interval: %f s\nMinimum Keep Alive Timeout: %f s"%(bgStatus,UIApplicationBackgroundFetchIntervalMinimum,UIMinimumKeepAliveTimeout))
         
         return True
 
@@ -58,22 +25,16 @@ class PythonAppDelegate(UIResponder):
         ElectronCash.app.main()
 
         return True
-    
-    @objc_method
-    def application_performFetchWithCompletionHandler_(self, application : ObjCInstance, completionHandler : ObjCInstance) -> None:
-        print("Background: In fetch appDelegate handler!")
-        def startHB() -> None:
-            print("Background: fetch start")
-            heartbeat.Start()
-        def cleanup() -> None:
-            print("Background: fetch cleanup")
-            heartbeat.Stop()
-            print("Background: About to call completion handler.. lord have mercy!")
-            completionHandler(UIBackgroundFetchResultNewData)
-        utils.do_in_main_thread(startHB)
-        utils.call_later(9.5,cleanup)
-            
 
+    # NB: According to apple docs, it's bad to abuse this method if you actually do no downloading, so disabled.
+    # If we reenable be sure to add the appropriate BackgroundModes key to Info.plist
+    '''@objc_method
+    def application_performFetchWithCompletionHandler_(self, application : ObjCInstance, completionHandler : ObjCInstance) -> None:
+        print("Background: WOAH DUDE! AppDelegate fetch handler called! It worked!")
+        print("Background: About to call completion handler.. lord have mercy!")
+        ObjCBlock(completionHandler)(UIBackgroundFetchResultNewData)
+    '''
+    
     @objc_method
     def application_didChangeStatusBarOrientation_(self, application, oldStatusBarOrientation: int) -> None:
         print("ROTATED", oldStatusBarOrientation)
@@ -83,9 +44,87 @@ class PythonAppDelegate(UIResponder):
 
     @objc_method
     def applicationDidBecomeActive_(self, application : ObjCInstance) -> None:
-        msg = "App became active" + cleanup_possible_bg_task_stuff()
+        msg = "App became active " + cleanup_possible_bg_task_stuff()
         print(msg)
+        
+        eg = gui.ElectrumGui.gui
+        if eg is not None and not eg.daemon_is_running():
+            print("Background: Restarting Daemon...")
+            eg.start_daemon()
+        
 
     @objc_method
     def applicationDidEnterBackground_(self, application : ObjCInstance) -> None:
         startup_bg_task_stuff(application)
+
+
+## Global helper functions for this bgtask stuff
+bgTask = UIBackgroundTaskInvalid
+bgTimer = None
+
+def startup_bg_task_stuff(application : ObjCInstance) -> None:
+    global bgTask
+    global bgTimer
+    print("Background: Entered background, notifying iOS about bgTask, starting bgTimer.")#, starting up heartbeat.")
+
+    bgTask = application.beginBackgroundTaskWithName_expirationHandler_(at("Electron_Cash_Background_Task"), on_bg_task_expiration)        
+
+    wasRunning = heartbeat.IsRunning()
+    #heartbeat.Start() # not sure if this makes much of a difference yet.. so don't use
+    if wasRunning: print("Background: Heartbeat was already active in foreground. FIXME!")
+    if bgTimer is not None: print("Background: bgTimer was not None. FIXME!")
+    
+    def onTimer() -> None:
+        global bgTask
+        global bgTimer
+        bgTimer = None
+        if bgTask != UIBackgroundTaskInvalid:
+            print("Background: Our expiry timer fired, will force expiration handler to execute early.")
+            on_bg_task_expiration()
+        else:
+            print("Background: Our expiry timer fired, but bgTask was already stopped.")
+    
+    print("Background: Time remaining is %f secs."%(float(application.backgroundTimeRemaining)))
+    bgTimer = utils.call_later(max(application.backgroundTimeRemaining-2.0,0.0),onTimer) # if we don't do this we get problems because iOS freezes our task and that crashes stuff in the daemon
+
+def cleanup_possible_bg_task_stuff() -> str:
+    global bgTask
+    global bgTimer
+
+    msg = ""
+    
+    if bgTimer is not None:
+        bgTimer.invalidate()
+        bgTimer = None
+        msg += "killed extant bgTimer"
+    else:
+        msg += "no bgTimer was running"
+        
+    if heartbeat.IsRunning():
+        heartbeat.Stop()
+        msg += ", sent stop to heartbeat"
+    else:
+        msg += ", heartbeat was not running"
+    if bgTask != UIBackgroundTaskInvalid:
+        UIApplication.sharedApplication.endBackgroundTask_(bgTask)
+        bgTask = UIBackgroundTaskInvalid
+        msg += ", told UIKit to end our bgTask"
+    else:
+        msg += ", we did not have a bgTask active"
+    return msg
+    
+def on_bg_task_expiration() -> None:
+    print("Background: Expiration handler called")
+    
+    daemonStopped = False
+    eg = gui.ElectrumGui.gui
+    if eg is not None and eg.daemon_is_running():
+        print("Background: Stopping Daemon...")
+        eg.stop_daemon()
+        daemonStopped = True
+
+    msg = "Background: "
+    msg += cleanup_possible_bg_task_stuff()
+    msg += ", stopped daemon" if daemonStopped else ""
+    print(msg)
+    

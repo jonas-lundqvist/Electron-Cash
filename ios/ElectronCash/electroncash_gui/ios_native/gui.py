@@ -242,18 +242,7 @@ class ElectrumGui(PrintError):
         
         self.window.makeKeyAndVisible()
                  
-        # network callbacks
-        if self.daemon.network:
-            self.daemon.network.register_callback(self.on_history, ['on_history'])
-            self.daemon.network.register_callback(self.on_quotes, ['on_quotes'])
-            interests = ['updated', 'new_transaction', 'status',
-                         'banner', 'verified', 'fee']
-            # To avoid leaking references to "self" that prevent the
-            # window from being GC-ed when closed, callbacks should be
-            # methods of this class only, and specifically not be
-            # partials, lambdas or methods of subobjects.  Hence...
-            self.daemon.network.register_callback(self.on_network, interests)
-            print ("REGISTERED NETWORK CALLBACKS")
+        self.register_network_callbacks()
 
         self.prefsVC = prefs.PrefsVC.new()
         self.prefsNav = UINavigationController.alloc().initWithRootViewController_(self.prefsVC)
@@ -267,6 +256,20 @@ class ElectrumGui(PrintError):
         print("UI Created Ok")
 
         return True
+    
+    def register_network_callbacks(self):
+        # network callbacks
+        if self.daemon.network:
+            self.daemon.network.register_callback(self.on_history, ['on_history'])
+            self.daemon.network.register_callback(self.on_quotes, ['on_quotes'])
+            interests = ['updated', 'new_transaction', 'status',
+                         'banner', 'verified', 'fee']
+            # To avoid leaking references to "self" that prevent the
+            # window from being GC-ed when closed, callbacks should be
+            # methods of this class only, and specifically not be
+            # partials, lambdas or methods of subobjects.  Hence...
+            self.daemon.network.register_callback(self.on_network, interests)
+            print ("REGISTERED NETWORK CALLBACKS")
     
     def setup_toolbar(self):
         butsStatusLabel = []
@@ -422,6 +425,9 @@ class ElectrumGui(PrintError):
             
     def on_network(self, event, *args):
         print ("ON NETWORK: %s (IsMainThread: %s)"%(event,str(NSThread.currentThread.isMainThread)))
+        if not self.daemon:
+            print("(Returning early.. daemon stopped)")
+            return
         assert self.historyVC is not None
         if event == 'updated':
             self.helper.needUpdate()
@@ -449,6 +455,7 @@ class ElectrumGui(PrintError):
     def on_status_update(self):
         print ("ON STATUS UPDATE (IsMainThread: %s)"%(str(NSThread.currentThread.isMainThread)))
         if not self.wallet:
+            print("(Returning early.. wallet stopped)")
             return
 
         if self.daemon.network is None or not self.daemon.network.is_running():
@@ -630,54 +637,7 @@ class ElectrumGui(PrintError):
         self.refresh_all()
         #for window in self.gui_object.windows:
         #    window.cashaddr_toggled_signal.emit()
-              
-    @staticmethod
-    def prompt_password(prmpt, dummy=0):
-        print("prompt_password(%s,%s) thread=%s mainThread?=%s"%(prmpt,str(dummy),NSThread.currentThread.description,str(NSThread.currentThread.isMainThread)))
-        return "bchbch"
-
-    def generate_wallet(self, path):
-        with open(path, "wb") as fdesc:
-            fdesc.write(hardcoded_testing_wallet)
-            fdesc.close()
-            print("Generated hard-coded wallet -- wrote %d bytes"%len(hardcoded_testing_wallet))
-        storage = WalletStorage(path, manual_upgrades=True)
-        if not storage.file_exists():
-            return
-        if storage.is_encrypted():
-            password = ElectrumGui.prompt_password("EnterPasswd",0)
-            if not password:
-                return
-            storage.decrypt(password)
-        if storage.requires_split():
-            return
-        if storage.requires_upgrade():
-            return
-        if storage.get_action():
-            return
-        wallet = Wallet(storage)
-        return wallet
-
-    def do_wallet_stuff(self, path, uri):
-        try:
-            wallet = self.daemon.load_wallet(path, ElectrumGui.prompt_password("PassPrompt1"))
-        except Exception as e:
-            traceback.print_exc(file=sys.stdout)
-            return
-        if not wallet:
-            storage = WalletStorage(path, manual_upgrades=True)
-            try:
-                wallet = self.generate_wallet(path)
-            except Exception as e:
-                print_error('[do_wallet_stuff] Exception caught', e)
-            if not wallet:
-                print("NO WALLET!!!")
-                return
-            wallet.start_threads(self.daemon.network)
-            self.daemon.add_wallet(wallet)
-        print("WALLET=%s synchronizer=%s"%(str(wallet),str(wallet.synchronizer)))
-        return wallet
-    
+                  
     def format_amount(self, x, is_diff=False, whitespaces=False):
         return format_satoshis(x, is_diff, self.num_zeros, self.decimal_point, whitespaces)
 
@@ -812,6 +772,91 @@ class ElectrumGui(PrintError):
         self.addressesVC.needUpdate()
         self.prefsVC.refresh()
 
+    def on_new_daemon(self):
+        self.open_last_wallet()
+        self.register_network_callbacks()
+        self.refresh_all()
+        
+    def stop_daemon(self):
+        if not self.daemon_is_running(): return
+        self.daemon.stop_wallet(self.wallet.storage.path)
+        self.daemon.stop()
+        self.wallet = None
+        self.daemon = None
+        
+    def start_daemon(self):
+        if self.daemon_is_running(): return
+        import electroncash.daemon as ed
+        fd, server = ed.get_fd_or_server(self.config)
+        self.daemon = ed.Daemon(self.config, fd, True)
+        self.daemon.start()
+        self.on_new_daemon()
+
+    def daemon_is_running(self) -> bool:
+        return self.daemon is not None and self.daemon.is_running()
+
+    def open_last_wallet(self):
+        self.config.open_last_wallet()
+        path = self.config.get_wallet_path()
+
+
+        # hard code some stuff for testing
+        self.daemon.network.auto_connect = True
+        self.config.set_key('auto_connect', self.daemon.network.auto_connect, True)
+        print("WALLET PATH: %s"%path)
+        #print ("NETWORK: %s"%str(self.daemon.network))
+        w = self.do_wallet_stuff(path, self.config.get('url'))
+        assert w
+        # TODO: put this stuff in the UI
+        self.wallet = w
+
+    @staticmethod
+    def prompt_password(prmpt, dummy=0):
+        print("prompt_password(%s,%s) thread=%s mainThread?=%s"%(prmpt,str(dummy),NSThread.currentThread.description,str(NSThread.currentThread.isMainThread)))
+        return "bchbch"
+
+    def generate_wallet(self, path):
+        with open(path, "wb") as fdesc:
+            fdesc.write(hardcoded_testing_wallet)
+            fdesc.close()
+            print("Generated hard-coded wallet -- wrote %d bytes"%len(hardcoded_testing_wallet))
+        storage = WalletStorage(path, manual_upgrades=True)
+        if not storage.file_exists():
+            return
+        if storage.is_encrypted():
+            password = ElectrumGui.prompt_password("EnterPasswd",0)
+            if not password:
+                return
+            storage.decrypt(password)
+        if storage.requires_split():
+            return
+        if storage.requires_upgrade():
+            return
+        if storage.get_action():
+            return
+        wallet = Wallet(storage)
+        return wallet
+
+    def do_wallet_stuff(self, path, uri):
+        try:
+            wallet = self.daemon.load_wallet(path, ElectrumGui.prompt_password("PassPrompt1"))
+        except Exception as e:
+            traceback.print_exc(file=sys.stdout)
+            return
+        if not wallet:
+            storage = WalletStorage(path, manual_upgrades=True)
+            try:
+                wallet = self.generate_wallet(path)
+            except Exception as e:
+                print_error('[do_wallet_stuff] Exception caught', e)
+            if not wallet:
+                print("NO WALLET!!!")
+                return
+            wallet.start_threads(self.daemon.network)
+            self.daemon.add_wallet(wallet)
+        #print("WALLET=%s synchronizer=%s"%(str(wallet),str(wallet.synchronizer)))
+        return wallet
+
     # this method is called by Electron Cash libs to start the GUI
     def main(self):       
         print("Test Decode result: %s"%check_imports())
@@ -826,17 +871,7 @@ class ElectrumGui(PrintError):
         except:
             traceback.print_exc(file=sys.stdout)
             return
-        self.config.open_last_wallet()
-        path = self.config.get_wallet_path()
-
-
-        # hard code some stuff for testing
-        self.daemon.network.auto_connect = True
-        self.config.set_key('auto_connect', self.daemon.network.auto_connect, True)
-        print("WALLET PATH: %s"%path)
-        print ("NETWORK: %s"%str(self.daemon.network))
-        w = self.do_wallet_stuff(path, self.config.get('url'))
-        assert w
-        # TODO: put this stuff in the UI
-        self.wallet = w
+        
+        self.open_last_wallet()
+        
         self.createAndShowUI()
