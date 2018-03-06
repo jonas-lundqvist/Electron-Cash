@@ -122,10 +122,14 @@ echo ""
 [ -e scratch ] && rm -fr scratch
 mkdir -v scratch || exit 1
 cd scratch || exit 1
-git clone -b block_copy_dispose_helpers http://www.github.com/cculianu/rubicon-objc 
+git clone http://www.github.com/cculianu/rubicon-objc 
 gitexit="$?"
+cd rubicon-objc
+git checkout -q c05ba9f654fe3afceaa94e35d082aa7630fa0da0
+gitexit2="$?"
 cd ..
-[ "$gitexit" != "0" ] && echo '*** Error crabbing the latest rubicon off of github' && exit 1
+cd ..
+[ "$gitexit" != "0" -o "$gitexit2" != 0 ] && echo '*** Error crabbing the latest rubicon off of github' && exit 1
 rm -fr iOS/app_packages/rubicon/objc
 cp -fpvr scratch/rubicon-objc/rubicon/objc iOS/app_packages/rubicon/ 
 [ "$?" != "0" ] && echo '*** Error copying rubicon files' && exit 1

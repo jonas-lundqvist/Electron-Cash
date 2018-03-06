@@ -67,36 +67,6 @@ TAG_PREFS = 4
 TAG_SEED = 5
 TAG_NETWORK = 6
 
-def check_imports():
-    # pure-python dependencies need to be imported here for pyinstaller
-    try:
-        import dns
-        import pyaes
-        import ecdsa
-        import requests
-        import qrcode
-        import pbkdf2
-        import google.protobuf
-        import jsonrpclib
-        # the following imports are for pyinstaller
-        from google.protobuf import descriptor
-        from google.protobuf import message
-        from google.protobuf import reflection
-        from google.protobuf import descriptor_pb2
-        from jsonrpclib import SimpleJSONRPCServer
-        import electroncash
-        import electroncash.bitcoin
-    # make sure that certificates are here
-    except ImportError as e:
-        return "Error: %s"%str(e)
-
-    try:
-        thekey = "5Hwpw2vSB66RMzf74b8isUYZFfQ23yrrmotVrxmJVcnjBDwWZ76"
-        return thekey + " decodes to: " + electroncash.bitcoin.address_from_private_key(str.encode(thekey,'utf8'))
-    except Exception as e:
-        print("Error: %s"%str(e))
-        return str(e)
-
 class GuiHelper(NSObject):
     updateNeeded = objc_property()
     butsStatus = objc_property()
@@ -242,18 +212,18 @@ class ElectrumGui(PrintError):
 
         self.setup_toolbar()
         
-        self.window.makeKeyAndVisible()
-                 
-        self.register_network_callbacks()
+        self.window.makeKeyAndVisible()                 
 
         self.prefsVC = prefs.PrefsVC.new()
         self.prefsNav = UINavigationController.alloc().initWithRootViewController_(self.prefsVC)
         self.add_navigation_bar_close_to_modal_vc(self.prefsVC)
-        
+
         tbl.refresh()
         
         self.helper.needUpdate()
                 
+        self.register_network_callbacks()
+
         print("UI Created Ok")
 
         return True
@@ -389,6 +359,7 @@ class ElectrumGui(PrintError):
     
     def on_rotated(self): # called by PythonAppDelegate after screen rotation
         #update status bar label width
+        if self.helper is None or self.helper.butsStatusLabel is None: return 
         size = UIScreen.mainScreen.bounds.size
         buts = self.helper.butsStatusLabel
         for b in buts:
@@ -870,12 +841,11 @@ class ElectrumGui(PrintError):
                 return
             wallet.start_threads(self.daemon.network)
             self.daemon.add_wallet(wallet)
-        #print("WALLET=%s synchronizer=%s"%(str(wallet),str(wallet.synchronizer)))
+        print("WALLET=%s synchronizer=%s"%(str(wallet),str(wallet.synchronizer)))
         return wallet
 
     # this method is called by Electron Cash libs to start the GUI
-    def main(self):       
-        print("Test Decode result: %s"%check_imports())
+    def main(self):
         import hashlib
         print("HashLib algorithms available: " + str(hashlib.algorithms_available))
         import platform

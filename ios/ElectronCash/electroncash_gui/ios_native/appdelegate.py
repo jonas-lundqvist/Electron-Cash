@@ -15,7 +15,6 @@ class PythonAppDelegate(UIResponder):
         #application.setMinimumBackgroundFetchInterval_(UIApplicationBackgroundFetchIntervalMinimum)
         #bgStatus = "Enabled for this app." if UIBackgroundRefreshStatusAvailable == int(application.backgroundRefreshStatus) else "DISABLED"
         #print("Background refresh status: %s\nBackground fetch minimum interval: %f s\nMinimum Keep Alive Timeout: %f s"%(bgStatus,UIApplicationBackgroundFetchIntervalMinimum,UIMinimumKeepAliveTimeout))
-        
         return True
 
     @objc_method
