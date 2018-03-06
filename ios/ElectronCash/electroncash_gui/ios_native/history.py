@@ -33,7 +33,7 @@ class TxDetail(UIViewController):
     
     @objc_method
     def loadView(self) -> None:
-        self.view, butCopy, butQR, descrTF = customviews.create_transaction_detail_view(self.entry)
+        self.view, butCopy, butQR, descrTF = customviews.create_transaction_detail_view(self)
         butCopy.addTarget_action_forControlEvents_(self, SEL(b'onCopyBut:'), UIControlEventPrimaryActionTriggered)
         butQR.addTarget_action_forControlEvents_(self, SEL(b'onQRBut:'), UIControlEventPrimaryActionTriggered)
         if descrTF is not None:
@@ -57,7 +57,34 @@ class TxDetail(UIViewController):
     @objc_method
     def onQRBut_(self, but) -> None:
         print("QR button pressed")
-        utils.show_timed_alert(self,"UNIMPLEMENTED", "QR button unimplemented -- coming soon!", 2.0)
+        #utils.show_notification(message="QR button unimplemented -- coming soon!", duration=2.0, color=(.9,0,0,1.0))
+        
+        qrvc = utils.present_qrcode_vc_for_data(vc=self.tabBarController,
+                                                data=self.entry[1],
+                                                title = _('QR code'))
+        gui.ElectrumGui.gui.add_navigation_bar_close_to_modal_vc(qrvc)
+
+        
+    @objc_method
+    def onTxLink_(self, gestureRecognizer : ObjCInstance) -> None:
+        def on_block_explorer() -> None:
+            parent = gui.ElectrumGui.gui
+            parent.view_on_block_explorer(self.entry[1], 'tx')
+            
+        utils.show_alert(
+            vc = self,
+            title = _("Options"),
+            message = _("Transaction ID:") + " " + self.entry[1][:12] + "...",
+            actions = [
+                [ 'Cancel' ],
+                [ _('Copy to clipboard'), self.onCopyBut_, None ],
+                [ _('Show as QR code'), self.onQRBut_, None ],
+                [ _("View on block explorer"), on_block_explorer ],
+            ],
+            cancel = 'Cancel',
+            style = UIAlertControllerStyleActionSheet
+        )
+
  
 # History Tab -- shows tx's, etc
 class HistoryTableVC(UITableViewController):

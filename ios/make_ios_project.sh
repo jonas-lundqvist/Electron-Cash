@@ -143,6 +143,15 @@ else
 	echo ".pbxproj mogrifid ok."
 fi
 
+echo ""
+echo "Adding HEADER_SEARCH_PATHS to Xcode .pbxproj..."
+echo ""
+python3 -m pbxproj flag iOS/Electron-Cash.xcodeproj/project.pbxproj -- HEADER_SEARCH_PATHS '"$(SDK_DIR)"/usr/include/libxml2'
+if [ "$?" != 0 ]; then
+	echo "Error adding libxml2 to HEADER_SEARCH_PATHS... aborting."
+	exit 1
+fi
+
 resources=Resources/*
 if [ -n "$resources" ]; then
 	echo ""
@@ -169,8 +178,8 @@ echo '*                                                                        *
 echo '**************************************************************************'
 echo ''
 echo '  IMPORTANT!'
-echo '        Now you need to manually add the AVFoundation framework to the'
-echo '        project else you may get compilation errors!'
+echo '        Now you need to manually add AVFoundation and libxml2.tbd to the '
+echo '        project Frameworks else you will get build errors!'
 echo ''
 echo '  Also note:'
 echo '        Modifications to files in iOS/ will be clobbered the next    '

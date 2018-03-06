@@ -30,6 +30,10 @@ from typing import Callable, Any
 from .uikit_bindings import *
 from .custom_objc import *
 
+import qrcode
+import qrcode.image.svg
+import tempfile
+
 bundle_identifier = NSBundle.mainBundle.bundleIdentifier
 bundle_domain = '.'.join(bundle_identifier.split('.')[0:-1])
 bundle_short_name = bundle_domain + ".ElectronCash"
@@ -77,7 +81,7 @@ def show_alert(vc : ObjCInstance, # the viewcontroller to present the alert view
                actions: list = [ ['Ok'] ],  # default has no callbacks and shows Ok button
                cancel: str = None, # name of the button you want to designate as 'Cancel' (ends up being first)
                destructive: str = None, # name of the button you want to designate as destructive (ends up being red)
-               style: int = UIAlertControllerStyleAlert,
+               style: int = UIAlertControllerStyleAlert, #or: UIAlertControllerStyleActionSheet
                completion: Callable[[],None] = None, # optional completion function that gets called when alert is presented
                animated: bool = True # whether or not to animate the alert
                ) -> ObjCInstance:
@@ -286,7 +290,7 @@ def show_notification(message : str,
         if not cw_notif.notificationIsDismissing:
             cw_notif.dismissNotification()
         
-    if color is None or len(color) != 4 or [c for c in color if type(c) is not float]:
+    if color is None or len(color) != 4 or [c for c in color if type(c) not in [float,int] ]:
         color = (0.0, 122.0/255.0, 1.0, 1.0)
       
     # set default blue color (since iOS 7.1, default window tintColor is black)
@@ -337,3 +341,35 @@ def NSLog(fmt : str, *args) -> int:
         print(formatted)
         retval = len(formatted)
     return retval
+
+#############################
+# Shows a QRCode 
+#############################
+def present_qrcode_vc_for_data(vc : ObjCInstance, data : str, title : str = "QR Code") -> ObjCInstance:
+    qr = qrcode.QRCode(image_factory=qrcode.image.svg.SvgPathFillImage)
+    qr.add_data(data)
+    img = qr.make_image()
+    fname = ""
+    tmp, fname = tempfile.mkstemp()
+    #NSLog("temp file = %s",fname)
+    img.save(fname)
+    os.close(tmp)
+    with open(fname, 'r') as tmp_file:
+        contents = tmp_file.read()
+    os.remove(fname)
+    uiimage = UIImage.imageWithSVGString_targetSize_fillColor_cachedName_(
+        contents,
+        CGSizeMake(256,256),
+        UIColor.blackColor,
+        None
+    )
+    qvc = UIViewController.new().autorelease()
+    qvc.title = title
+    iv = UIImageView.alloc().initWithImage_(uiimage).autorelease()
+    iv.autoresizeMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight|UIViewAutoresizingFlexibleLeftMargin|UIViewAutoresizingFlexibleRightMargin|UIViewAutoresizingFlexibleTopMargin|UIViewAutoresizingFlexibleBottomMargin
+    iv.contentMode = UIViewContentModeScaleAspectFit
+    iv.opaque = True
+    qvc.view = iv
+    nav = UINavigationController.alloc().initWithRootViewController_(qvc).autorelease()
+    vc.presentViewController_animated_completion_(nav,True,None)
+    return qvc

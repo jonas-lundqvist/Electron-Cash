@@ -52,6 +52,8 @@ from electroncash.address import Address
 # from electroncash.verifier import SPV
 # from electroncash.util import DebugMem
 from electroncash.util import UserCancelled, print_error, format_satoshis, format_satoshis_plain, PrintError, timestamp_to_datetime
+import electroncash.web as web
+
 
 # from electroncash.wallet import Abstract_Wallet
 
@@ -246,9 +248,8 @@ class ElectrumGui(PrintError):
 
         self.prefsVC = prefs.PrefsVC.new()
         self.prefsNav = UINavigationController.alloc().initWithRootViewController_(self.prefsVC)
-        self.prefsVC.closeButton = UIBarButtonItem.alloc().initWithBarButtonSystemItem_target_action_(UIBarButtonSystemItemStop, self.helper, SEL(b'onModalClose:')).autorelease()
-        self.prefsVC.navigationItem.rightBarButtonItem = self.prefsVC.closeButton
-
+        self.add_navigation_bar_close_to_modal_vc(self.prefsVC)
+        
         tbl.refresh()
         
         self.helper.needUpdate()
@@ -615,6 +616,12 @@ class ElectrumGui(PrintError):
             pass
         self.tabController.dismissViewControllerAnimated_completion_(True, None)
         
+    def add_navigation_bar_close_to_modal_vc(self, vc : ObjCInstance) -> ObjCInstance:
+        closeButton = UIBarButtonItem.alloc().initWithBarButtonSystemItem_target_action_(UIBarButtonSystemItemStop, self.helper, SEL(b'onModalClose:')).autorelease()
+        vc.navigationItem.rightBarButtonItem = closeButton
+        return closeButton
+        
+        
     def cashaddr_icon(self):
         imgname = "addr_converter_bw.png"
         if self.prefs_get_use_cashaddr():
@@ -757,6 +764,15 @@ class ElectrumGui(PrintError):
             self.num_zeros = value
             self.config.set_key('num_zeros', value, True)
             self.refresh_all()
+            
+    def view_on_block_explorer(self, item : str, which : str) -> None:
+        which = which if which in ['tx', 'addr'] else None
+        assert which is not None and item is not None
+        url = web.BE_URL(self.config, which, item)
+        if UIApplication.sharedApplication.respondsToSelector_(SEL(b'openURL:options:completionHandler:')):
+            UIApplication.sharedApplication.openURL_options_completionHandler_(NSURL.URLWithString_(url),{},None)
+        else:
+            UIApplication.sharedApplication.openURL_(NSURL.URLWithString_(url))
 
     def validate_amount(self, text):
         try:

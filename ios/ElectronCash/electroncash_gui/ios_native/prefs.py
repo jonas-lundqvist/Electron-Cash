@@ -27,9 +27,7 @@ UNIT_KEYS.sort(key=lambda x: UNITS[x],reverse=True)
 
 
 class PrefsVC(UITableViewController):
-    
-    closeButton = objc_property() # caller sets this
-    
+        
     currencies = objc_property() # NSArray of strings...
     exchanges = objc_property() # NSArray of strings...
     
@@ -40,7 +38,6 @@ class PrefsVC(UITableViewController):
     def init(self) -> ObjCInstance:
         self = ObjCInstance(send_super(self, 'initWithStyle:', UITableViewStyleGrouped, argtypes=[c_int]))
         self.title = _("Preferences")
-        self.closeButton = None
         self.currencies = None
         self.exchanges = None
         self.normalButtonColor = None
@@ -59,7 +56,6 @@ class PrefsVC(UITableViewController):
     def dealloc(self) -> None:
         self.warnButtonColor = None
         self.normalButtonColor = None
-        self.closeButton = None
         self.currencies = None
         self.exchanges = None
         send_super(self, 'dealloc')

@@ -369,6 +369,18 @@ NSObliquenessAttributeName = 'NSObliqueness'
 NSExpansionAttributeName = 'NSExpansion'
 NSWritingDirectionAttributeName = 'NSWritingDirection'
 NSVerticalGlyphFormAttributeName = 'CTVerticalForms'
+# NSUnderlineStyle enum
+NSUnderlineStyleNone        = 0x00
+NSUnderlineStyleSingle      = 0x01
+NSUnderlineStyleThick       = 0x02
+NSUnderlineStyleDouble      = 0x09
+NSUnderlinePatternSolid     = 0x0000
+NSUnderlinePatternDot       = 0x0100
+NSUnderlinePatternDash      = 0x0200
+NSUnderlinePatternDashDot   = 0x0300
+NSUnderlinePatternDashDotDot= 0x0400
+NSUnderlineByWord           = 0x8000
+
 
 # UIStackView.h stuff
 UIStackView = ObjCClass('UIStackView')
@@ -587,3 +599,6 @@ UIBackgroundTaskInvalid = c_ulong.in_dll(uikit, "UIBackgroundTaskInvalid").value
 UIMinimumKeepAliveTimeout = c_double.in_dll(uikit, "UIMinimumKeepAliveTimeout").value
 UIApplicationBackgroundFetchIntervalMinimum = c_double.in_dll(uikit, "UIApplicationBackgroundFetchIntervalMinimum").value
 UIApplicationBackgroundFetchIntervalNever = c_double.in_dll(uikit, "UIApplicationBackgroundFetchIntervalNever").value
+
+#UITapGestureRecognizer
+UITapGestureRecognizer = ObjCClass('UITapGestureRecognizer')

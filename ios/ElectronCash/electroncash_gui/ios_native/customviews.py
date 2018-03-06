@@ -5,7 +5,8 @@ from .uikit_bindings import *
 
 # returns the view itself, plus the copy button and the qrcode button, plus the (sometimes nil!!) UITextField for the editable description
 #  the copy and the qrcode buttons are so that caller may attach event handing to them
-def create_transaction_detail_view(entry) -> (ObjCInstance, ObjCInstance, ObjCInstance, ObjCInstance):
+def create_transaction_detail_view(txDetailViewController : ObjCInstance) -> (ObjCInstance, ObjCInstance, ObjCInstance, ObjCInstance):
+    entry = txDetailViewController.entry
     dummy, tx_hash, status_str, label, v_str, balance_str, date, conf, status, value, img, *dummy2 = entry
     parent = gui.ElectrumGui.gui
     wallet = parent.wallet
@@ -29,7 +30,12 @@ def create_transaction_detail_view(entry) -> (ObjCInstance, ObjCInstance, ObjCIn
     v.setContentHuggingPriority_forAxis_(UILayoutPriorityDefaultHigh, UILayoutConstraintAxisVertical)
     viewsV1.append(v)
     v = UILabel.new().autorelease()
-    v.text = tx_hash if tx_hash is not None and tx_hash != "None" else _('Unknown')
+    linkAttributes = {
+        NSForegroundColorAttributeName : UIColor.colorWithRed_green_blue_alpha_(0.05,0.4,0.65,1.0),
+        NSUnderlineStyleAttributeName : NSUnderlineStyleSingle              
+                      }
+    tx_hash_str = tx_hash if tx_hash is not None and tx_hash != "None" else _('Unknown')
+    v.attributedText = NSAttributedString.alloc().initWithString_attributes_(tx_hash_str, linkAttributes).autorelease()
     v.backgroundColor = UIColor.colorWithWhite_alpha_(0.0,0.075)
     v.setContentCompressionResistancePriority_forAxis_(UILayoutPriorityDefaultLow, UILayoutConstraintAxisHorizontal)
     v.setContentCompressionResistancePriority_forAxis_(UILayoutPriorityDefaultHigh, UILayoutConstraintAxisVertical)
@@ -37,6 +43,10 @@ def create_transaction_detail_view(entry) -> (ObjCInstance, ObjCInstance, ObjCIn
     v.minimumScaleFactor = 0.25
     v.numberOfLines = 0
     v.lineBreakMode = NSLineBreakByTruncatingTail
+    # make the pseudo-link clickable
+    v.userInteractionEnabled = True
+    v.addGestureRecognizer_(UITapGestureRecognizer.alloc().initWithTarget_action_(txDetailViewController,SEL(b'onTxLink:')).autorelease())
+
     viewsH1.append(v)
     v = UIButton.buttonWithType_(UIButtonTypeCustom)
     but1 = v
