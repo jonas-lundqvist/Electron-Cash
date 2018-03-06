@@ -50,13 +50,11 @@ class TxDetail(UIViewController):
 
     @objc_method
     def onCopyBut_(self, but) -> None:
-        #print("Copy button pressed")
         UIPasteboard.generalPasteboard.string = self.entry[1]
         utils.show_notification(message=_("Text copied to clipboard"))
 
     @objc_method
     def onQRBut_(self, but) -> None:
-        print("QR button pressed")
         #utils.show_notification(message="QR button unimplemented -- coming soon!", duration=2.0, color=(.9,0,0,1.0))
         
         qrvc = utils.present_qrcode_vc_for_data(vc=self.tabBarController,

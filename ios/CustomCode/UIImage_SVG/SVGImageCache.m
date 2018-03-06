@@ -28,6 +28,7 @@
 
 	if (self) {
 		self.cachedImages = [[NSMutableDictionary alloc] init];
+        self.limit = 0;
 	}
 
 	return self;
@@ -45,6 +46,10 @@
 
 - (void)addImageToCache:(UIImage *)image forKey:(NSDictionary *)key
 {
+    while (self.limit > 0 && ! [self.cachedImages objectForKey:key] && self.cachedImages.count >= self.limit) {
+        NSArray *keys = self.cachedImages.allKeys;
+        [self.cachedImages removeObjectForKey:keys.lastObject];
+    }
 	[self.cachedImages setObject:image forKey:key];
 }
 

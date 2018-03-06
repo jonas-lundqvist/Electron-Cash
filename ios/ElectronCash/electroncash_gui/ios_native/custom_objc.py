@@ -57,3 +57,8 @@ CWNotificationAnimationStyleRight = 3
 CWNotificationAnimationTypeReplace = 0
 # /// Overlays existing content.
 CWNotificationAnimationTypeOverlay = 1
+
+################################
+# UIImage+SVG related
+################################
+SVGImageCache = ObjCClass('SVGImageCache')

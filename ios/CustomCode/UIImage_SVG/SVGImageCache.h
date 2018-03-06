@@ -12,6 +12,7 @@
 @interface SVGImageCache : NSObject
 
 @property (nonatomic, readwrite) NSMutableDictionary *cachedImages;
+@property (nonatomic, readwrite) NSUInteger limit; /* limit cache to this many images.. if 0, no limit */
 
 + (instancetype)sharedImageCache;
 

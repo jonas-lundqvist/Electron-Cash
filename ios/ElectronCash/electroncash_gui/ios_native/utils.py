@@ -33,6 +33,7 @@ from .custom_objc import *
 import qrcode
 import qrcode.image.svg
 import tempfile
+import random
 
 bundle_identifier = NSBundle.mainBundle.bundleIdentifier
 bundle_domain = '.'.join(bundle_identifier.split('.')[0:-1])
@@ -345,24 +346,55 @@ def NSLog(fmt : str, *args) -> int:
 #############################
 # Shows a QRCode 
 #############################
+_qr_cache = {}
+_regd = False
 def present_qrcode_vc_for_data(vc : ObjCInstance, data : str, title : str = "QR Code") -> ObjCInstance:
-    qr = qrcode.QRCode(image_factory=qrcode.image.svg.SvgPathFillImage)
-    qr.add_data(data)
-    img = qr.make_image()
-    fname = ""
-    tmp, fname = tempfile.mkstemp()
-    #NSLog("temp file = %s",fname)
-    img.save(fname)
-    os.close(tmp)
-    with open(fname, 'r') as tmp_file:
-        contents = tmp_file.read()
-    os.remove(fname)
-    uiimage = UIImage.imageWithSVGString_targetSize_fillColor_cachedName_(
-        contents,
-        CGSizeMake(256,256),
-        UIColor.blackColor,
-        None
-    )
+    global _qr_cache
+    global _regd
+    def cachePut(u):
+        global _qr_cache
+        if _qr_cache.get(data,None) is not None: return
+        if len(_qr_cache) >= 4:
+            # expire img if cache full
+            keez = list(_qr_cache.keys())
+            _qr_cache.pop(keez[random.randrange(len(keez))]).autorelease()
+        _qr_cache[data] = u.retain()
+    def lowMemory(notificaton : ObjCInstance) -> None:
+        # low memory warning -- loop through cache and release all cached images
+        global _qr_cache
+        ct = 0
+        for k in _qr_cache.keys():
+            _qr_cache[k].release()
+            ct += 1
+        _qr_cache = {}
+        if ct: NSLog("Low Memory: Flushed %d images from qrcode image cache."%(ct))
+    if not _regd:
+        NSNotificationCenter.defaultCenter.addObserverForName_object_queue_usingBlock_(
+            UIApplicationDidReceiveMemoryWarningNotification,
+            UIApplication.sharedApplication,
+            None,
+            lowMemory
+        )
+        _regd = True
+    uiimage = _qr_cache.get(data,None)
+    if uiimage is None:
+        qr = qrcode.QRCode(image_factory=qrcode.image.svg.SvgPathFillImage)
+        qr.add_data(data)
+        img = qr.make_image()
+        fname = ""
+        tmp, fname = tempfile.mkstemp()
+        img.save(fname)
+        os.close(tmp)
+        with open(fname, 'r') as tmp_file:
+            contents = tmp_file.read()
+        os.remove(fname)
+        uiimage = UIImage.imageWithSVGString_targetSize_fillColor_cachedName_(
+            contents,
+            CGSizeMake(256,256),
+            UIColor.blackColor,
+            None
+        )
+        cachePut(uiimage)
     qvc = UIViewController.new().autorelease()
     qvc.title = title
     iv = UIImageView.alloc().initWithImage_(uiimage).autorelease()
