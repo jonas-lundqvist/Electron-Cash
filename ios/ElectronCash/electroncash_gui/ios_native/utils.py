@@ -343,40 +343,73 @@ def NSLog(fmt : str, *args) -> int:
         retval = len(formatted)
     return retval
 
-#############################
-# Shows a QRCode 
-#############################
-_qr_cache = {}
-_regd = False
-def present_qrcode_vc_for_data(vc : ObjCInstance, data : str, title : str = "QR Code") -> ObjCInstance:
-    global _qr_cache
-    global _regd
-    def cachePut(u):
-        global _qr_cache
-        if _qr_cache.get(data,None) is not None: return
-        if len(_qr_cache) >= 4:
-            # expire img if cache full
-            keez = list(_qr_cache.keys())
-            _qr_cache.pop(keez[random.randrange(len(keez))]).autorelease()
-        _qr_cache[data] = u.retain()
-    def lowMemory(notificaton : ObjCInstance) -> None:
-        # low memory warning -- loop through cache and release all cached images
-        global _qr_cache
-        ct = 0
-        for k in _qr_cache.keys():
-            _qr_cache[k].release()
-            ct += 1
-        _qr_cache = {}
-        if ct: NSLog("Low Memory: Flushed %d images from qrcode image cache."%(ct))
-    if not _regd:
-        NSNotificationCenter.defaultCenter.addObserverForName_object_queue_usingBlock_(
+####################################################################
+# NS Object Cache
+#
+# Store frequently used objc instances in a semi-intelligent, auto-
+# retaining dictionary, complete with automatic low-memory-warning
+# detection.
+####################################################################
+class NSObjCache:
+    def __init__(self, maxSize : int = 4, name : str = "Unnamed"):
+        self._cache = {}
+        maxSize = 4 if type(maxSize) not in [float, int] or maxSize < 1 else int(maxSize)
+        self._max = maxSize
+        self._name = name
+        self._last = None
+        def lowMemory(notificaton : ObjCInstance) -> None:
+            # low memory warning -- loop through cache and release all cached images
+            ct = 0
+            for k in self._cache.keys():
+                self._cache[k].release()
+                ct += 1
+            self._cache = {}
+            if ct: NSLog("Low Memory: Flushed %d objects from '%s' NSObjCache."%(ct,self._name))
+     
+        self._token = NSNotificationCenter.defaultCenter.addObserverForName_object_queue_usingBlock_(
             UIApplicationDidReceiveMemoryWarningNotification,
             UIApplication.sharedApplication,
             None,
             lowMemory
-        )
-        _regd = True
-    uiimage = _qr_cache.get(data,None)
+        ).retain()
+    def __del__(self):
+        while len(self): self.release1()
+        if self._token is not None:
+            NSNotificationCenter.defaultCenter.removeObserver_(self._token.autorelease())
+            self._token = None
+    def release1(self):
+        keez = list(self._cache.keys())
+        while len(keez): # this normally only iterates once
+            k = keez[random.randrange(len(keez))]
+            if len(keez) > 1 and k is not None and self._last is not None and k == self._last:
+                # never expire the 'latest' item from the cache, unless the cache is of size 1
+                continue
+            self._cache.pop(k).release()
+            if k == self._last: self._last = None
+            break # end after 1 successful iteration
+    def put(self, key, obj : ObjCInstance):
+        if self._cache.get(key,None) is not None: return
+        while len(self) >= self._max:
+            self.release1()
+            #print("NSObjCache %s expired an object from full cache"%(self._name))
+        self._cache[key] = obj.retain()
+        #print("Cache %s size now %d"%(self._name,len(self)))
+    def get(self, key) -> ObjCInstance: # returns None on cache miss
+        ret = self._cache.get(key, None)
+        #if ret is not None: print("NSObjCache %s hit"%(self._name))
+        #else: print("NSObjCache %s miss"%(self._name))
+        self._last = key
+        return ret
+    def __len__(self):
+        return len(self._cache)
+
+#############################
+# Shows a QRCode 
+#############################
+_qr_cache = NSObjCache(4,"QR UIImage Cache")
+def present_qrcode_vc_for_data(vc : ObjCInstance, data : str, title : str = "QR Code") -> ObjCInstance:
+    global _qr_cache
+    uiimage = _qr_cache.get(data)
     if uiimage is None:
         qr = qrcode.QRCode(image_factory=qrcode.image.svg.SvgPathFillImage)
         qr.add_data(data)
@@ -394,7 +427,7 @@ def present_qrcode_vc_for_data(vc : ObjCInstance, data : str, title : str = "QR 
             UIColor.blackColor,
             None
         )
-        cachePut(uiimage)
+        _qr_cache.put(data, uiimage)
     qvc = UIViewController.new().autorelease()
     qvc.title = title
     iv = UIImageView.alloc().initWithImage_(uiimage).autorelease()
