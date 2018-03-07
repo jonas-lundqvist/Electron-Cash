@@ -479,13 +479,16 @@ class ElectrumGui(PrintError):
     def show_downloading_notif(self, txt = None):
         if self.downloadingNotif is None:
             self.setup_downloading_notif()
-        elif self.is_downloading_notif_showing(): return
-        def Completion() -> None:
-            #print ("Show completion")
-            pass
+
         if txt is not None and type(txt) is str:
             lbl = self.downloadingNotif_view.viewWithTag_(2)
             if lbl is not None: lbl.text = txt
+
+        if self.is_downloading_notif_showing(): return
+
+        def Completion() -> None:
+            #print ("Show completion")
+            pass
         self.downloadingNotif_view.removeFromSuperview()
         self.downloadingNotif.displayNotificationWithView_completion_(
             self.downloadingNotif_view,
@@ -582,7 +585,7 @@ class ElectrumGui(PrintError):
         if len(self.tx_notifications):
             self.notify_transactions()
             
-        if show_dl_pct is not None: self.show_downloading_notif()
+        if show_dl_pct is not None: self.show_downloading_notif(_("Downloading headers {}% ...").format(show_dl_pct) if show_dl_pct > 0 else None)
         else: self.dismiss_downloading_notif()
             
     def notify_transactions(self):
