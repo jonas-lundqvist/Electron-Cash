@@ -513,8 +513,8 @@ class ElectrumGui(PrintError):
         utils.NSLog("ON STATUS UPDATE (IsMainThread: %s)",str(NSThread.currentThread.isMainThread))
         show_dl_pct = None
         
-        if not self.wallet:
-            utils.NSLog("(Returning early.. wallet stopped)")
+        if not self.wallet or not self.daemon:
+            utils.NSLog("(Returning early.. wallet and/or daemon stopped)")
             return
 
         if self.daemon.network is None or not self.daemon.network.is_running():

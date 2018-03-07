@@ -6,6 +6,7 @@ from . import gui
 from . import heartbeat
 from . import utils
 import ElectronCash.app
+import time
 
 class PythonAppDelegate(UIResponder):
     
@@ -43,7 +44,9 @@ class PythonAppDelegate(UIResponder):
 
     @objc_method
     def applicationDidBecomeActive_(self, application : ObjCInstance) -> None:
-        msg = "App became active " + cleanup_possible_bg_task_stuff()
+        s,f = cleanup_possible_bg_task_stuff()
+        f()
+        msg = "App became active " + s
         utils.NSLog("%s",msg)
         
         eg = gui.ElectrumGui.gui
@@ -55,6 +58,18 @@ class PythonAppDelegate(UIResponder):
     @objc_method
     def applicationDidEnterBackground_(self, application : ObjCInstance) -> None:
         startup_bg_task_stuff(application)
+        
+    @objc_method
+    def applicationWillTerminate_(self, application : ObjCInstance) -> None:
+        eg = gui.ElectrumGui.gui
+        if eg is not None and eg.daemon_is_running():
+            utils.NSLog("Termination: Stopping Daemon...")
+            eg.stop_daemon()
+    
+    # this gets fired when another app window overlays out app and/or user pulls down notification bar, etc
+    @objc_method
+    def applicationWillResignActive_(self, application : ObjCInstance) -> None:
+        utils.NSLog("Appliction will resign active message received.")
 
 
 ## Global helper functions for this bgtask stuff
@@ -83,12 +98,15 @@ def startup_bg_task_stuff(application : ObjCInstance) -> None:
         else:
             utils.NSLog("Background: Our expiry timer fired, but bgTask was already stopped.")
     
-    utils.NSLog("Background: Time remaining is %f secs.",float(application.backgroundTimeRemaining))
-    bgTimer = utils.call_later(min(178.0,max(application.backgroundTimeRemaining-2.0,0.0)),onTimer) # if we don't do this we get problems because iOS freezes our task and that crashes stuff in the daemon
+    timerTime = min(175.0,application.backgroundTimeRemaining-2.0)
+    utils.NSLog("Background: Time remaining is %f secs, our timer will fire in %f secs.",float(application.backgroundTimeRemaining),float(timerTime))
+    bgTimer = utils.call_later(timerTime,onTimer) # if we don't do this we get problems because iOS freezes our task and that crashes stuff in the daemon
 
-def cleanup_possible_bg_task_stuff() -> str:
+def cleanup_possible_bg_task_stuff() -> (str, callable):
     global bgTask
     global bgTimer
+    
+    func = lambda: False
 
     msg = ""
     
@@ -105,16 +123,23 @@ def cleanup_possible_bg_task_stuff() -> str:
     else:
         msg += ", heartbeat was not running"
     if bgTask != UIBackgroundTaskInvalid:
-        UIApplication.sharedApplication.endBackgroundTask_(bgTask)
+        bgTask_saved = bgTask
         bgTask = UIBackgroundTaskInvalid
+        def sleepThenKill() -> None:
+            if UIApplication.sharedApplication.applicationState == UIApplicationStateBackground:
+                #print("Sleeping 1 sec...")
+                time.sleep(1.0) # give threads a chance to do stuff
+            UIApplication.sharedApplication.endBackgroundTask_(bgTask_saved)
+            # at this point our process may be suspended if we were in the background state
+        func = sleepThenKill
         msg += ", told UIKit to end our bgTask"
     else:
         msg += ", we did not have a bgTask active"
-    return msg
+    return msg, func
     
 def on_bg_task_expiration() -> None:
     utils.NSLog("Background: Expiration handler called")
-    
+
     daemonStopped = False
     eg = gui.ElectrumGui.gui
     if eg is not None and eg.daemon_is_running():
@@ -123,7 +148,9 @@ def on_bg_task_expiration() -> None:
         daemonStopped = True
 
     msg = "Background: "
-    msg += cleanup_possible_bg_task_stuff()
+    s,func = cleanup_possible_bg_task_stuff() 
+    msg += s
     msg += ", stopped daemon" if daemonStopped else ""
     utils.NSLog("%s",msg)
-    
+    func()         # at this point we may get suspended if we were in the background state..
+
