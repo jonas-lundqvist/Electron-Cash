@@ -15,6 +15,8 @@
 @end
 
 @implementation HelpfulGlue
-// Deleted code that was here because it's no longer needed
++ (void) NSLogString:(NSString *)string {
+    NSLog(@"%@",string);
+}
 @end
 

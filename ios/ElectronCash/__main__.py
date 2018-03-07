@@ -16,4 +16,4 @@ if __name__ == '__main__':
     #.argtypes = [c_int, POINTER(c_char_p), c_void_p, c_void_p]
     uikit.UIApplicationMain(argc, argv, None, ns_from_py("PythonAppDelegate").ptr)
     sys.exit(0) # ensure we don't end up back in obj-c
-    # at this point process exits.. note that objc's auto-generated main.m invocation of UIApplicationMain should not end up being called!
+    # at this point process exits.. note that objc's auto-generated main.m invocation of UIApplicationMain will not end up being called!

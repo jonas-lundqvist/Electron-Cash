@@ -52,6 +52,12 @@ def get_fn_and_ext(fileName: str) -> tuple:
         fn = '.'.join(p1) 
     return (fn,ext)
 
+def get_user_dir():
+    dfm = NSFileManager.defaultManager
+    # documents dir
+    thedir = dfm.URLsForDirectory_inDomains_(9, 1).objectAtIndex_(0)
+    return str(thedir.path)
+
 def uiview_set_enabled(view : ObjCInstance, b : bool) -> None:
     if view is None: return
     view.userInteractionEnabled = b
@@ -309,19 +315,12 @@ def show_notification(message : str,
  #######################################################
  ### NSLog emulation -- python wrapper for NSLog
  #######################################################
-try:
-    import rubicon.objc.runtime
-    runtime.Foundation.NSLog.restype = c_int
-    runtime.Foundation.NSLog.argtypes = [c_void_p,c_void_p]
-    _pct_at = ns_from_py("%@").retain(convert_result=False)
-except Exception as e:
-    print("Could not find NSLog, utils.NSLog will just use regular python print. Exception was: %s"%(str(e)))
+
 def NSLog(fmt : str, *args) -> int:
     args = list(args)
     if isinstance(fmt, ObjCInstance):
         fmt = str(py_from_ns(fmt))
     fmt = fmt.replace("%@","%s")
-    retval = 0
     for i,a in enumerate(args):
         if isinstance(a, ObjCInstance):
             try:
@@ -335,13 +334,12 @@ def NSLog(fmt : str, *args) -> int:
                     args[i] = "<Unknown>"
     try:
         formatted = ns_from_py("{}".format(fmt%tuple(args)))
-        retval = runtime.Foundation.NSLog(_pct_at, formatted.ptr)        
+        # NB: we had problems with ctypes and variadic functions due to ARM64 ABI weirdness. So we do this.
+        HelpfulGlue.NSLogString_(formatted)
     except Exception as e:
         print("<NSLog Emul Exception> : %s"%(str(e)))
         formatted = "[NSLog Unavailable] {}".format(fmt%tuple(args))
         print(formatted)
-        retval = len(formatted)
-    return retval
 
 ####################################################################
 # NS Object Cache

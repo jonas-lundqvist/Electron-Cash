@@ -218,13 +218,13 @@ class ElectrumGui(PrintError):
         self.prefsNav = UINavigationController.alloc().initWithRootViewController_(self.prefsVC)
         self.add_navigation_bar_close_to_modal_vc(self.prefsVC)
 
+        self.register_network_callbacks()
+
         tbl.refresh()
         
         self.helper.needUpdate()
                 
-        self.register_network_callbacks()
-
-        print("UI Created Ok")
+        utils.NSLog("UI Created Ok")
 
         return True
     
@@ -841,7 +841,7 @@ class ElectrumGui(PrintError):
                 return
             wallet.start_threads(self.daemon.network)
             self.daemon.add_wallet(wallet)
-        print("WALLET=%s synchronizer=%s"%(str(wallet),str(wallet.synchronizer)))
+        #print("WALLET=%s synchronizer=%s"%(str(wallet),str(wallet.synchronizer)))
         return wallet
 
     # this method is called by Electron Cash libs to start the GUI

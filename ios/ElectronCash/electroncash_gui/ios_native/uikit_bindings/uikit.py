@@ -606,3 +606,6 @@ UITapGestureRecognizer = ObjCClass('UITapGestureRecognizer')
 #NSNotificationCenter stuff
 NSNotificationCenter = ObjCClass('NSNotificationCenter')
 UIApplicationDidReceiveMemoryWarningNotification = ObjCInstance(c_void_p.in_dll(uikit, "UIApplicationDidReceiveMemoryWarningNotification"))
+
+#NSFileManager
+NSFileManager = ObjCClass("NSFileManager")
