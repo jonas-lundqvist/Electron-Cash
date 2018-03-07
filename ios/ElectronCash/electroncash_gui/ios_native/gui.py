@@ -356,7 +356,7 @@ class ElectrumGui(PrintError):
         if self.downloadingNotif is not None: return
         self.downloadingNotif = CWStatusBarNotification.new()
         def OnTap() -> None:
-            #self.dismiss_downloading_notif()
+            self.query_hide_downloading_notif()
             pass
         # NB: if I change the type it crashes sometimes on app startup due to bugs in this control.. perhaps? 
         self.downloadingNotif.notificationAnimationType = CWNotificationAnimationTypeOverlay
@@ -477,6 +477,8 @@ class ElectrumGui(PrintError):
             self.print_error("unexpected network message:", event, args)
 
     def show_downloading_notif(self, txt = None):
+        if self.prefs_get_downloading_notif_hidden():
+            return
         if self.downloadingNotif is None:
             self.setup_downloading_notif()
 
@@ -484,7 +486,8 @@ class ElectrumGui(PrintError):
             lbl = self.downloadingNotif_view.viewWithTag_(2)
             if lbl is not None: lbl.text = txt
 
-        if self.is_downloading_notif_showing(): return
+        if self.is_downloading_notif_showing():
+            return
 
         def Completion() -> None:
             #print ("Show completion")
@@ -620,7 +623,18 @@ class ElectrumGui(PrintError):
                                 style=CWNotificationStyleNavigationBarNotification,
                                 multiline=bool(len(lines)))
         
-
+    def query_hide_downloading_notif(self):
+        vc = self.tabController if self.tabController.presentedViewController is None else self.tabController.presentedViewController
+        utils.show_alert(vc = vc,
+                         title = _("Hide Download Banner"),
+                         message = _("Do you wish to hide the download progress banner?\n(You can re-enabled it in Settings later)"),
+                         actions= [
+                            [ _('Yes'), self.prefs_set_downloading_notif_hidden, True],
+                            [ _('No') ],
+                            ],
+                         cancel = _('No')
+                        )
+        
         
     def update_lock_icon(self):
         img = UIImage.imageNamed_("lock.png" if self.wallet.has_password() else "unlock.png").imageWithRenderingMode_(UIImageRenderingModeAlwaysOriginal)
@@ -774,6 +788,17 @@ class ElectrumGui(PrintError):
             print ("Setting language to {}".format(l))
             set_language(l)
             
+    def prefs_set_downloading_notif_hidden(self, b : bool) -> None:
+        was = self.prefs_get_downloading_notif_hidden()
+        if b == was: return
+        if b: self.dismiss_downloading_notif()
+        self.config.set_key('hide_downloading_banner', bool(b))
+        self.prefsVC.refresh()
+        self.on_status_update()
+    
+    def prefs_get_downloading_notif_hidden(self) -> bool:
+        return self.config.get('hide_downloading_banner', False)
+        
     def prefs_get_show_fee(self) -> bool:
         return self.config.get('show_fee', False)
     
@@ -871,6 +896,10 @@ class ElectrumGui(PrintError):
         
     def on_low_memory(self) -> None:
         utils.NSLog("GUI: Low memory")
+        if self.downloadingNotif_view is not None and self.downloadingNotif is None:
+            self.downloadingNotif_view.release()
+            self.downloadingNotif_view = None
+            utils.NSLog("Released cached 'downloading notification banner view' due to low memory")
         
     def stop_daemon(self):
         if not self.daemon_is_running(): return

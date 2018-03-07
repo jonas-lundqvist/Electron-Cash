@@ -127,7 +127,7 @@ class PrefsVC(UITableViewController):
         elif secName == 'Transactions':
             return 3
         elif secName == 'Appearance':
-            return 4
+            return 5
         elif secName == 'Fiat':
             return 4
         return 0
@@ -197,11 +197,18 @@ class PrefsVC(UITableViewController):
             if row == 0:
                 l = cell.viewWithTag_(1)
                 s = cell.viewWithTag_(2)
+                l.text = _('Hide download banner')
+                s.on = parent.prefs_get_downloading_notif_hidden()
+                if s.allTargets.count <= 0:
+                    s.addTarget_action_forControlEvents_(self, SEL(b'onHideDLBanner:'), UIControlEventValueChanged)
+            elif row == 1:
+                l = cell.viewWithTag_(1)
+                s = cell.viewWithTag_(2)
                 l.text = _('CashAddr address format')
                 s.on = parent.prefs_get_use_cashaddr()
                 if s.allTargets.count <= 0:
                     s.addTarget_action_forControlEvents_(self, SEL(b'onUseCashAddr:'), UIControlEventValueChanged)
-            elif row == 1:
+            elif row == 2:
                 l = cell.viewWithTag_(1)
                 b = cell.viewWithTag_(2)
                 b = b if b is not None else cell.viewWithTag_(TAG_NZ)
@@ -215,7 +222,7 @@ class PrefsVC(UITableViewController):
                     if nz_prefs >= nr:
                         nz_prefs = nr-1
                     b.setTitle_forState_(str(nz_prefs),UIControlStateNormal)
-            elif row == 2:
+            elif row == 3:
                 l = cell.viewWithTag_(1)
                 b = cell.viewWithTag_(2)
                 b = b if b is not None else cell.viewWithTag_(TAG_BASE_UNIT)
@@ -225,7 +232,7 @@ class PrefsVC(UITableViewController):
                     b.setTitle_forState_(parent.base_unit(),UIControlStateNormal)
                     if b.allTargets.count <= 0:
                         b.addTarget_action_forControlEvents_(self, SEL(b'onBaseUnitBut:'), UIControlEventPrimaryActionTriggered)
-            elif row == 3:
+            elif row == 4:
                 l = cell.viewWithTag_(1)
                 b = cell.viewWithTag_(2)
                 b = b if b is not None else cell.viewWithTag_(TAG_BLOCK_EXPLORER)
@@ -303,7 +310,7 @@ class PrefsVC(UITableViewController):
         ident = ("%s_%d"%(secName,row))
         cell = None
         
-        if ident in ['Fees_1', 'Transactions_0', 'Transactions_1', 'Transactions_2', 'Appearance_0', 'Fiat_1', 'Fiat_2']:
+        if ident in ['Fees_1', 'Transactions_0', 'Transactions_1', 'Transactions_2', 'Appearance_0', 'Appearance_1','Fiat_1', 'Fiat_2']:
             objs = NSBundle.mainBundle.loadNibNamed_owner_options_("BoolCell",self.tableView,None)
             assert objs is not None and len(objs)
             cell = objs[0] 
@@ -311,7 +318,7 @@ class PrefsVC(UITableViewController):
             objs = NSBundle.mainBundle.loadNibNamed_owner_options_("TFCell",self.tableView,None)
             assert objs is not None and len(objs)
             cell = objs[0]
-        elif ident in ['Appearance_1', 'Appearance_2', 'Appearance_3', 'Fiat_0', 'Fiat_3']:
+        elif ident in ['Appearance_2', 'Appearance_3', 'Appearance_4', 'Fiat_0', 'Fiat_3']:
             objs = NSBundle.mainBundle.loadNibNamed_owner_options_("ButtonCell",self.tableView,None)
             assert objs is not None and len(objs)
             cell = objs[0]
@@ -445,6 +452,10 @@ class PrefsVC(UITableViewController):
     def onUseMultiple_(self, s: ObjCInstance) -> None:
         parent = gui.ElectrumGui.gui
         parent.prefs_set_multiple_change(bool(s.isOn()))
+    @objc_method
+    def onHideDLBanner_(self, s: ObjCInstance) -> None:
+        parent = gui.ElectrumGui.gui
+        parent.prefs_set_downloading_notif_hidden(bool(s.isOn()))
     @objc_method
     def onUseCashAddr_(self, s: ObjCInstance) -> None:
         parent = gui.ElectrumGui.gui
