@@ -18,5 +18,9 @@
 + (void) NSLogString:(NSString *)string {
     NSLog(@"%@",string);
 }
+
++ (void) affineScaleView:(UIView *)v scaleX:(CGFloat)scaleX scaleY:(CGFloat)scaleY {
+    v.transform = CGAffineTransformMakeScale(scaleX, scaleY);
+}
 @end
 

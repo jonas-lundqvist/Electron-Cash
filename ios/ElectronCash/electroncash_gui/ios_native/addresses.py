@@ -56,7 +56,6 @@ class AddressesTableVC(UITableViewController):
         self.title = _("&Addresses").split('&')[1]
                 
         self.refreshControl = UIRefreshControl.alloc().init().autorelease()
-        self.refreshControl.addTarget_action_forControlEvents_(self,SEL('needUpdate'), UIControlEventValueChanged)
         self.updateAddressesFromWallet()
         
         return self

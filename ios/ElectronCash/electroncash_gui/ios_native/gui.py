@@ -129,6 +129,17 @@ class GuiHelper(NSObject):
             ElectrumGui.gui.on_tool_button(but)
             
     @objc_method
+    def onRefreshControl_(self, refreshControl : ObjCInstance) -> None:
+        if ElectrumGui.gui is not None:
+            ElectrumGui.gui.refresh_all()
+
+    @objc_method
+    def bindRefreshControl_(self, refreshControl: ObjCInstance) -> None:
+        if (refreshControl is not None
+            and refreshControl.actionsForTarget_forControlEvent_(self, UIControlEventValueChanged) is None):
+            refreshControl.addTarget_action_forControlEvents_(self,SEL('onRefreshControl:'), UIControlEventValueChanged)
+            
+    @objc_method
     def onModalClose_(self,but) -> None:
         if ElectrumGui.gui is not None:
             ElectrumGui.gui.on_modal_close(but)
@@ -179,21 +190,26 @@ class ElectrumGui(PrintError):
         self.tx_notifications = []
         self.helper = None
         self.helperTimer = None
+        self.lowMemoryToken = None
+        self.downloadingNotif = None
+        self.downloadingNotif_view = None
 
     def createAndShowUI(self):
         self.helper = GuiHelper.alloc().init()
-
+        
         self.window = UIWindow.alloc().initWithFrame_(UIScreen.mainScreen.bounds)
         self.tabController = UITabBarController.alloc().init().autorelease()
 
         self.window.backgroundColor = UIColor.whiteColor
         self.historyVC = tbl = history.HistoryTableVC.alloc().initWithStyle_(UITableViewStylePlain).autorelease()
+        self.helper.bindRefreshControl_(self.historyVC.refreshControl)
 
         self.sendVC = snd = send.SendVC.alloc().init().autorelease()
         
         self.receiveVC = rcv = receive.ReceiveVC.alloc().init().autorelease()
         
         self.addressesVC = adr = addresses.AddressesTableVC.alloc().initWithStyle_(UITableViewStylePlain).autorelease()
+        self.helper.bindRefreshControl_(self.addressesVC.refreshControl)
         
         self.historyNav = nav = UINavigationController.alloc().initWithRootViewController_(tbl).autorelease()
 
@@ -223,7 +239,14 @@ class ElectrumGui(PrintError):
         tbl.refresh()
         
         self.helper.needUpdate()
-                
+
+        self.lowMemoryToken = NSNotificationCenter.defaultCenter.addObserverForName_object_queue_usingBlock_(
+            UIApplicationDidReceiveMemoryWarningNotification,
+            UIApplication.sharedApplication,
+            None,
+            Block(lambda: self.on_low_memory(), restype=None)
+        ).retain()
+             
         utils.NSLog("UI Created Ok")
 
         return True
@@ -329,9 +352,38 @@ class ElectrumGui(PrintError):
         self.helper.butsCashaddr = butsCashaddr
         self.helper.butsPrefs = butsPrefs
     
+    def setup_downloading_notif(self):
+        if self.downloadingNotif is not None: return
+        self.downloadingNotif = CWStatusBarNotification.new()
+        def OnTap() -> None:
+            #self.dismiss_downloading_notif()
+            pass
+        # NB: if I change the type it crashes sometimes on app startup due to bugs in this control.. perhaps? 
+        self.downloadingNotif.notificationAnimationType = CWNotificationAnimationTypeOverlay
+        self.downloadingNotif.notificationTappedBlock = OnTap
+        if self.downloadingNotif_view is None:
+            objs = NSBundle.mainBundle.loadNibNamed_owner_options_("ActivityStatusNotificationView",None,None)
+            if objs is None or not len(objs):
+                raise Exception("Could not load ActivityStatusNotificationView nib!")
+            lbl = objs[0].viewWithTag_(2)
+            if lbl is not None:
+                lbl.text = _("Downloading blockchain headers...")
+            activityIndicator = objs[0].viewWithTag_(1)
+            if activityIndicator is not None:
+                HelpfulGlue.affineScaleView_scaleX_scaleY_(activityIndicator, 0.5, 0.5)
+            self.downloadingNotif_view = objs[0].retain()
+            
     def destroyUI(self):
         if self.window is None:
             return
+        if self.lowMemoryToken is not None:
+            NSNotificationCenter.defaultCenter.removeObserver_(self.lowMemoryToken.autorelease())
+            self.lowMemoryToken = None
+        if self.downloadingNotif is not None:
+            self.dismiss_downloading_notif()
+        if self.downloadingNotif_view is not None:
+            self.downloadingNotif_view.autorelease()
+            self.downloadingNotif_view = None
         self.prefsVC.autorelease()
         self.prefsNav.autorelease()
         self.prefsVC = None
@@ -423,9 +475,44 @@ class ElectrumGui(PrintError):
             pass
         else:
             self.print_error("unexpected network message:", event, args)
+
+    def show_downloading_notif(self, txt = None):
+        if self.downloadingNotif is None:
+            self.setup_downloading_notif()
+        elif self.is_downloading_notif_showing(): return
+        def Completion() -> None:
+            #print ("Show completion")
+            pass
+        if txt is not None and type(txt) is str:
+            lbl = self.downloadingNotif_view.viewWithTag_(2)
+            if lbl is not None: lbl.text = txt
+        self.downloadingNotif_view.removeFromSuperview()
+        self.downloadingNotif.displayNotificationWithView_completion_(
+            self.downloadingNotif_view,
+            Completion
+        )
+        
+    def is_downloading_notif_showing(self):
+        return (self.downloadingNotif.notificationIsShowing and
+                not self.downloadingNotif.notificationIsDismissing)
+            
+    def dismiss_downloading_notif(self):
+        if self.downloadingNotif is None: return
+        if not self.is_downloading_notif_showing(): return
+        dnf = self.downloadingNotif
+        def compl() -> None:
+            #print("Dismiss completion")
+            if self.downloadingNotif_view is not None:
+                self.downloadingNotif_view.removeFromSuperview()
+            if self.downloadingNotif is not None:
+                self.downloadingNotif.release()
+            self.downloadingNotif = None
+        self.downloadingNotif.dismissNotificationWithCompletion_(compl)
             
     def on_status_update(self):
         utils.NSLog("ON STATUS UPDATE (IsMainThread: %s)",str(NSThread.currentThread.isMainThread))
+        show_dl_pct = None
+        
         if not self.wallet:
             utils.NSLog("(Returning early.. wallet stopped)")
             return
@@ -462,6 +549,18 @@ class ElectrumGui(PrintError):
                     icon = "status_connected.png"
                 else:
                     icon = "status_connected_proxy.png"
+            
+            lh, sh = self.daemon.network.get_status_value('updated')        
+            '''utils.NSLog("lh=%d sh=%d is_up_to_date=%d Wallet Network is_up_to_date=%d is_connecting=%d is_connected=%d",
+                        int(lh), int(sh),
+                        int(self.wallet.up_to_date),
+                        int(self.daemon.network.is_up_to_date()),
+                        int(self.daemon.network.is_connecting()),
+                        int(self.daemon.network.is_connected()))
+            '''
+            if lh is not None and sh is not None and lh >= 0 and sh > 0 and lh < sh:
+                show_dl_pct = int((lh*100.0)/float(sh))
+                
         else:
             text = _("Not connected")
             icon = "status_disconnected.png"
@@ -482,6 +581,9 @@ class ElectrumGui(PrintError):
         
         if len(self.tx_notifications):
             self.notify_transactions()
+            
+        if show_dl_pct is not None: self.show_downloading_notif()
+        else: self.dismiss_downloading_notif()
             
     def notify_transactions(self):
         if not self.daemon.network or not self.daemon.network.is_connected():
@@ -763,6 +865,9 @@ class ElectrumGui(PrintError):
         self.open_last_wallet()
         self.register_network_callbacks()
         self.refresh_all()
+        
+    def on_low_memory(self) -> None:
+        utils.NSLog("GUI: Low memory")
         
     def stop_daemon(self):
         if not self.daemon_is_running(): return

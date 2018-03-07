@@ -114,7 +114,6 @@ class HistoryTableVC(UITableViewController):
             self.statusImages.addObject_(img)
         
         self.refreshControl = UIRefreshControl.alloc().init().autorelease()
-        self.refreshControl.addTarget_action_forControlEvents_(self,SEL('needUpdate'), UIControlEventValueChanged)
 
         return self
 
