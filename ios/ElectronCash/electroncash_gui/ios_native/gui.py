@@ -67,6 +67,22 @@ TAG_PREFS = 4
 TAG_SEED = 5
 TAG_NETWORK = 6
 
+class MyTabBarController(UITabBarController):
+    
+    didLayout = objc_property()
+    
+    @objc_method
+    def init(self) -> ObjCInstance:
+        self = ObjCInstance(send_super(self, 'init'))
+        if self is not None: self.didLayout = False
+        return self
+    
+    @objc_method
+    def viewDidLayoutSubviews(self) -> None:
+        self.didLayout = True
+        send_super(self, 'viewDidLayoutSubviews')
+
+
 class GuiHelper(NSObject):
     updateNeeded = objc_property()
     butsStatus = objc_property()
@@ -193,14 +209,17 @@ class ElectrumGui(PrintError):
         self.lowMemoryToken = None
         self.downloadingNotif = None
         self.downloadingNotif_view = None
+        
+        self.window = UIWindow.alloc().initWithFrame_(UIScreen.mainScreen.bounds)
+        NSBundle.mainBundle.loadNibNamed_owner_options_("Splash2",self.window,None)        
+        self.window.makeKeyAndVisible()
+        utils.NSLog("GUI instance creted, splash screen 2 presented")
 
     def createAndShowUI(self):
         self.helper = GuiHelper.alloc().init()
         
-        self.window = UIWindow.alloc().initWithFrame_(UIScreen.mainScreen.bounds)
-        self.tabController = UITabBarController.alloc().init().autorelease()
+        self.tabController = MyTabBarController.alloc().init().autorelease()
 
-        self.window.backgroundColor = UIColor.whiteColor
         self.historyVC = tbl = history.HistoryTableVC.alloc().initWithStyle_(UITableViewStylePlain).autorelease()
         self.helper.bindRefreshControl_(self.historyVC.refreshControl)
 
@@ -224,12 +243,9 @@ class ElectrumGui(PrintError):
         tabitems[2].image = UIImage.imageNamed_("tab_receive.png").imageWithRenderingMode_(UIImageRenderingModeAlwaysOriginal)
         tabitems[3].image = UIImage.imageNamed_("tab_addresses.png").imageWithRenderingMode_(UIImageRenderingModeAlwaysOriginal)
 
-        self.window.rootViewController = self.tabController
 
         self.setup_toolbar()
         
-        self.window.makeKeyAndVisible()                 
-
         self.prefsVC = prefs.PrefsVC.new()
         self.prefsNav = UINavigationController.alloc().initWithRootViewController_(self.prefsVC)
         self.add_navigation_bar_close_to_modal_vc(self.prefsVC)
@@ -246,6 +262,11 @@ class ElectrumGui(PrintError):
             None,
             Block(lambda: self.on_low_memory(), restype=None)
         ).retain()
+
+        self.window.backgroundColor = UIColor.whiteColor
+        self.window.rootViewController = self.tabController
+
+        self.window.makeKeyAndVisible()                 
              
         utils.NSLog("UI Created Ok")
 
@@ -263,7 +284,14 @@ class ElectrumGui(PrintError):
             # methods of this class only, and specifically not be
             # partials, lambdas or methods of subobjects.  Hence...
             self.daemon.network.register_callback(self.on_network, interests)
-            print ("REGISTERED NETWORK CALLBACKS")
+            utils.NSLog("REGISTERED NETWORK CALLBACKS")
+
+    def unregister_network_callbacks(self):
+        if self.daemon and self.daemon.network:
+            self.daemon.network.unregister_callback(self.on_history)
+            self.daemon.network.unregister_callback(self.on_quotes)
+            self.daemon.network.unregister_callback(self.on_network)
+            utils.NSLog("UN-REGISTERED NETWORK CALLBACKS")
     
     def setup_toolbar(self):
         butsStatusLabel = []
@@ -372,10 +400,15 @@ class ElectrumGui(PrintError):
             if activityIndicator is not None:
                 HelpfulGlue.affineScaleView_scaleX_scaleY_(activityIndicator, 0.5, 0.5)
             self.downloadingNotif_view = objs[0].retain()
-            
-    def destroyUI(self):
+    
+    def __del__(self):
+        utils.NSLog("GUI instance __del__")
+        self.dispose()
+          
+    def dispose(self):
         if self.window is None:
             return
+        self.stop_daemon()
         if self.lowMemoryToken is not None:
             NSNotificationCenter.defaultCenter.removeObserver_(self.lowMemoryToken.autorelease())
             self.lowMemoryToken = None
@@ -384,15 +417,15 @@ class ElectrumGui(PrintError):
         if self.downloadingNotif_view is not None:
             self.downloadingNotif_view.autorelease()
             self.downloadingNotif_view = None
-        self.prefsVC.autorelease()
-        self.prefsNav.autorelease()
+        if self.prefsVC is not None: self.prefsVC.autorelease()
+        if self.prefsNav is not None: self.prefsNav.autorelease()
         self.prefsVC = None
         self.prefsNav = None
-        self.daemon.network.unregister_callback(self.on_history)
-        self.daemon.network.unregister_callback(self.on_network)
         if self.helperTimer is not None:
             self.helperTimer.invalidate()
-        self.tabController.viewControllers = None
+            self.helperTimer = None
+        if self.tabController is not None: 
+            self.tabController.viewControllers = None
         self.historyNav = None
         self.historyVC = None
         self.sendNav = None
@@ -405,8 +438,7 @@ class ElectrumGui(PrintError):
         self.tabController = None
         self.window.release()
         self.window = None
-        self.helperTimer = None
-        self.helper.release()
+        if self.helper is not None: self.helper.release()
         self.helper = None
     
     def on_rotated(self): # called by PythonAppDelegate after screen rotation
@@ -422,7 +454,11 @@ class ElectrumGui(PrintError):
                 f.size.width = size.width / 2
             b.customView.frame = f
             #b.customView.sizeToFit()
-
+        
+        # on rotation sometimes the notif gets messed up.. so re-create it
+        #if self.downloadingNotif is not None and self.is_downloading_notif_showing() and self.downloadingNotif_view is not None:
+        #    self.dismiss_downloading_notif()
+        #    self.show_downloading_notif()
 
     
     def init_network(self):
@@ -506,14 +542,15 @@ class ElectrumGui(PrintError):
         if self.downloadingNotif is None: return
         if not self.is_downloading_notif_showing(): return
         dnf = self.downloadingNotif
+        self.downloadingNotif = None
         def compl() -> None:
             #print("Dismiss completion")
-            if self.downloadingNotif_view is not None:
+            if (self.downloadingNotif_view is not None
+                and dnf.customView is not None
+                and self.downloadingNotif_view.isDescendantOfView_(dnf.customView)):
                 self.downloadingNotif_view.removeFromSuperview()
-            if self.downloadingNotif is not None:
-                self.downloadingNotif.release()
-            self.downloadingNotif = None
-        self.downloadingNotif.dismissNotificationWithCompletion_(compl)
+            dnf.release()
+        dnf.dismissNotificationWithCompletion_(compl)
             
     def on_status_update(self):
         utils.NSLog("ON STATUS UPDATE (IsMainThread: %s)",str(NSThread.currentThread.isMainThread))
@@ -588,8 +625,10 @@ class ElectrumGui(PrintError):
         if len(self.tx_notifications):
             self.notify_transactions()
             
-        if show_dl_pct is not None: self.show_downloading_notif(_("Downloading headers {}% ...").format(show_dl_pct) if show_dl_pct > 0 else None)
-        else: self.dismiss_downloading_notif()
+        if show_dl_pct is not None and self.tabController.didLayout:
+            self.show_downloading_notif(_("Downloading headers {}% ...").format(show_dl_pct) if show_dl_pct > 0 else None)
+        else:
+            self.dismiss_downloading_notif()
             
     def notify_transactions(self):
         if not self.daemon.network or not self.daemon.network.is_connected():
@@ -732,8 +771,6 @@ class ElectrumGui(PrintError):
         self.update_cashaddr_icon()
         Address.show_cashaddr(on)
         self.refresh_all()
-        #for window in self.gui_object.windows:
-        #    window.cashaddr_toggled_signal.emit()
                   
     def format_amount(self, x, is_diff=False, whitespaces=False):
         return format_satoshis(x, is_diff, self.num_zeros, self.decimal_point, whitespaces)
@@ -890,6 +927,7 @@ class ElectrumGui(PrintError):
         self.prefsVC.refresh()
 
     def on_new_daemon(self):
+        self.daemon.gui = self
         self.open_last_wallet()
         self.register_network_callbacks()
         self.refresh_all()
@@ -903,6 +941,7 @@ class ElectrumGui(PrintError):
         
     def stop_daemon(self):
         if not self.daemon_is_running(): return
+        self.unregister_network_callbacks()
         self.daemon.stop_wallet(self.wallet.storage.path)
         self.daemon.stop()
         self.wallet = None

@@ -609,3 +609,57 @@ UIApplicationDidReceiveMemoryWarningNotification = ObjCInstance(c_void_p.in_dll(
 
 #NSFileManager
 NSFileManager = ObjCClass("NSFileManager")
+
+#UIDevice
+UIDevice = ObjCClass('UIDevice')
+
+#UIDeviceOrientation
+UIDeviceOrientationUnknown = 0
+UIDeviceOrientationPortrait = 1  #,            // Device oriented vertically, home button on the bottom
+UIDeviceOrientationPortraitUpsideDown = 2  #,  // Device oriented vertically, home button on the top
+UIDeviceOrientationLandscapeLeft = 3  #,       // Device oriented horizontally, home button on the right
+UIDeviceOrientationLandscapeRight = 4  #,      // Device oriented horizontally, home button on the left
+UIDeviceOrientationFaceUp = 5  #,              // Device oriented flat, face up
+UIDeviceOrientationFaceDown = 5  #             // Device oriented flat, face down
+
+#UIDeviceBatteryState
+UIDeviceBatteryStateUnknown = 0
+UIDeviceBatteryStateUnplugged = 1  #,   // on battery, discharging
+UIDeviceBatteryStateCharging = 2  #,    // plugged in, less than 100%
+UIDeviceBatteryStateFull = 3  #,        // plugged in, at 100%
+
+#UIUserInterfaceIdiom
+UIUserInterfaceIdiomUnspecified = -1
+UIUserInterfaceIdiomPhone = 0  # NS_ENUM_AVAILABLE_IOS(3_2), // iPhone and iPod touch style UI
+UIUserInterfaceIdiomPad = 1  # NS_ENUM_AVAILABLE_IOS(3_2), // iPad style UI
+UIUserInterfaceIdiomTV = 2  # NS_ENUM_AVAILABLE_IOS(9_0), // Apple TV style UI
+UIUserInterfaceIdiomCarPlay = 3  # NS_ENUM_AVAILABLE_IOS(9_0), // CarPlay style UI
+
+#UIStatusBarStyle
+UIStatusBarStyleDefault = 0  #, // Dark content, for use on light backgrounds
+UIStatusBarStyleLightContent = 1  #, // Light content, for use on dark backgrounds
+UIStatusBarStyleBlackTranslucent = 1 # DEPRECATED
+UIStatusBarStyleBlackOpaque = 2 # DEPRECATED "Use UIStatusBarStyleLightContent")
+
+#UIStatusBarAnimation
+UIStatusBarAnimationNone = 0
+UIStatusBarAnimationFade = 1
+UIStatusBarAnimationSlide = 2 
+
+#// Note that UIInterfaceOrientationLandscapeLeft is equal to UIDeviceOrientationLandscapeRight (and vice versa).
+#// This is because rotating the device to the left requires rotating the content to the right.
+#UIInterfaceOrientation
+UIInterfaceOrientationUnknown            = UIDeviceOrientationUnknown
+UIInterfaceOrientationPortrait           = UIDeviceOrientationPortrait
+UIInterfaceOrientationPortraitUpsideDown = UIDeviceOrientationPortraitUpsideDown
+UIInterfaceOrientationLandscapeLeft      = UIDeviceOrientationLandscapeRight
+UIInterfaceOrientationLandscapeRight     = UIDeviceOrientationLandscapeLeft
+
+#UIInterfaceOrientationMask
+UIInterfaceOrientationMaskPortrait = (1 << UIInterfaceOrientationPortrait)
+UIInterfaceOrientationMaskLandscapeLeft = (1 << UIInterfaceOrientationLandscapeLeft)
+UIInterfaceOrientationMaskLandscapeRight = (1 << UIInterfaceOrientationLandscapeRight)
+UIInterfaceOrientationMaskPortraitUpsideDown = (1 << UIInterfaceOrientationPortraitUpsideDown)
+UIInterfaceOrientationMaskLandscape = (UIInterfaceOrientationMaskLandscapeLeft | UIInterfaceOrientationMaskLandscapeRight)
+UIInterfaceOrientationMaskAll = (UIInterfaceOrientationMaskPortrait | UIInterfaceOrientationMaskLandscapeLeft | UIInterfaceOrientationMaskLandscapeRight | UIInterfaceOrientationMaskPortraitUpsideDown)
+UIInterfaceOrientationMaskAllButUpsideDown = (UIInterfaceOrientationMaskPortrait | UIInterfaceOrientationMaskLandscapeLeft | UIInterfaceOrientationMaskLandscapeRight)

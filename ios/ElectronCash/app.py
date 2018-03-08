@@ -2,9 +2,11 @@
 import sys, os
 from electroncash import daemon
 from electroncash.util import set_verbosity
-from electroncash_gui.ios_native.utils import get_user_dir
+from electroncash_gui.ios_native import ElectrumGui
+from electroncash_gui.ios_native.utils import get_user_dir, call_later
 from electroncash.networks import NetworkConstants
 from electroncash.simple_config import SimpleConfig
+from electroncash_gui.ios_native.uikit_bindings import *
 
 def main():
     print("HomeDir from ObjC = '%s'"%get_user_dir())
@@ -36,8 +38,13 @@ def main():
     if fd is not None:
         plugins = None
         d = daemon.Daemon(config, fd, True)
-        d.start()
-        d.init_gui(config, plugins)
+        gui = ElectrumGui(config, d, plugins)
+        d.gui = gui
+        def later() -> None:
+            d.start()
+            #d.init_gui(config, plugins)
+            gui.main()
+        call_later(0.1,later)
     else:
         result = server.gui(config_options)
 

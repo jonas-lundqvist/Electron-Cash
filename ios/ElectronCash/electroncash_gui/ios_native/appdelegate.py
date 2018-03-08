@@ -10,6 +10,15 @@ import time
 
 class PythonAppDelegate(UIResponder):
     
+    firstRun = objc_property()
+    
+    @objc_method
+    def init(self) -> ObjCInstance:
+        self = ObjCInstance(send_super(self, 'init'))
+        if self is not None:
+            self.firstRun = True
+        return self
+    
     @objc_method
     def application_willFinishLaunchingWithOptions_(self, application : ObjCInstance, launchOptions : ObjCInstance) -> bool:
         # tell iOS that our app refreshes content in the background
@@ -50,14 +59,17 @@ class PythonAppDelegate(UIResponder):
         utils.NSLog("%s",msg)
         
         eg = gui.ElectrumGui.gui
-        if eg is not None and not eg.daemon_is_running():
+        if eg is not None and not eg.daemon_is_running() and not self.firstRun:
             utils.NSLog("Background: Restarting Daemon...")
             eg.start_daemon()
+        
+        self.firstRun = False
         
 
     @objc_method
     def applicationDidEnterBackground_(self, application : ObjCInstance) -> None:
-        startup_bg_task_stuff(application)
+        if not self.firstRun:
+            startup_bg_task_stuff(application)
         
     @objc_method
     def applicationWillTerminate_(self, application : ObjCInstance) -> None:
