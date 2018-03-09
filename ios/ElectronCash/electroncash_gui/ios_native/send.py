@@ -280,7 +280,7 @@ class SendVC(UIViewController):
             except:
                 errLbl.text = _("Invalid Address")
                 raise Exception("InvalidAddress")
-            if self.amountSats is None or self.amountSats <= 0 or self.feeSats is None: # or self.feeSats <= 0:
+            if self.amountSats is None or self.feeSats is None or not len(addrTf.text): # or self.feeSats <= 0:
                 errLbl.text = ""
                 raise Exception("SilentException") # silent error when amount or fee isn't yet specified
             

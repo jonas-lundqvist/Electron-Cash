@@ -30,6 +30,7 @@ class BTCAmountEdit(UITextField):
     #shortcut = pyqtSignal()
     isInt = objc_property()
     isShortcut = objc_property()
+    modified = objc_property()
 
     @objc_method
     def init(self) -> ObjCInstance:
@@ -50,6 +51,7 @@ class BTCAmountEdit(UITextField):
         # cleanup code here...
         self.isInt = None
         self.isShortcut = None
+        self.modified = None
         utils.remove_all_callbacks(self)
         send_super(self, 'dealloc')
 
@@ -60,8 +62,10 @@ class BTCAmountEdit(UITextField):
         #self.base_unit = base_unit
         #self.textChanged.connect(self.numbify)
         self.addTarget_action_forControlEvents_(self, SEL(b'numbify'), UIControlEventEditingDidEnd)
+        self.addTarget_action_forControlEvents_(self, SEL(b'edited'), UIControlEventEditingChanged)        
         self.isInt = False
         self.isShortcut = False
+        self.modified = False
         #self.help_palette = QPalette()
 
     @objc_method
@@ -102,7 +106,11 @@ class BTCAmountEdit(UITextField):
         
     @objc_method
     def isModified(self) -> bool:
-        return self.isFirstResponder
+        return self.modified
+
+    @objc_method
+    def edited(self) -> None:
+        self.modified = True
 
     '''
     def paintEvent(self, event):
@@ -127,6 +135,7 @@ class BTCAmountEdit(UITextField):
 
     @objc_method
     def setAmount_(self, amount : ObjCInstance) -> None:
+        self.modified = False
         if amount is None:
             self.text = ""  # Text(" ") # Space forces repaint in case units changed
         else:
