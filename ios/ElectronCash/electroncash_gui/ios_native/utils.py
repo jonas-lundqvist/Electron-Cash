@@ -439,7 +439,7 @@ def present_qrcode_vc_for_data(vc : ObjCInstance, data : str, title : str = "QR 
 
 #########################################################################################
 # Poor man's signal/slot support
-#   For our limited ObjC objects which can't have Python attributes as instance members.
+#   For our limited ObjC objects which can't have Python attributes
 #########################################################################################
 _cb_map = {}
 def add_callback(obj : ObjCInstance, name : str, callback : Callable) -> None:
