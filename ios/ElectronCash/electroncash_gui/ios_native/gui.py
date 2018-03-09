@@ -920,6 +920,59 @@ class ElectrumGui(PrintError):
         p = pow(10, self.decimal_point)
         return int( p * x ) if x > 0 else None
     
+    def show_error(self, message, title = _("Error"), onOk = None):
+        vc = self.tabController if self.tabController.presentedViewController is None else self.tabController.presentedViewController
+        actions = [ [_('OK')] ]
+        if onOk is not None and callable(onOk): actions[0].append(onOk)
+        utils.show_alert(
+            vc = vc,
+            title = title,
+            message = message,
+            actions = actions
+        )
+
+    def on_pr(self, request):
+        #self.payment_request = request
+        #if self.payment_request.verify(self.contacts):
+        #    self.payment_request_ok_signal.emit()
+        #else:
+        #    self.payment_request_error_signal.emit()
+        utils.NSLog("On PR: %s -- UNIMPLEMENTED.. IMPLEMENT ME!",str(request))
+        
+    def show_send_tab(self):
+        vcs = self.tabController.viewControllers
+        for i,vc in enumerate(vcs):
+            if vc.ptr.value == self.sendVC.ptr.value:
+                if self.tabController.selectedIndex != i: self.tabController.selectedIndex = i
+                return
+
+    def pay_to_URI(self, URI, errFunc : callable = None):
+        utils.NSLog("PayTo URI: %s", str(URI))
+        if not URI:
+            return
+        try:
+            out = web.parse_URI(URI, self.on_pr)
+        except Exception as e:
+            if not callable(errFunc):
+                self.show_error(_('Invalid bitcoincash URI:') + '\n' + str(e))
+            else:
+                errFunc()
+            return
+        self.show_send_tab()
+        r = out.get('r')
+        sig = out.get('sig')
+        name = out.get('name')
+        if r or (name and sig):
+            #self.prepare_for_payment_request()
+            print("TODO: prepare_for_payment_request")
+            return
+        address = out.get('address')
+        amount = out.get('amount')
+        label = out.get('label')
+        message = out.get('message')
+        # use label as description (not BIP21 compliant)
+        self.sendVC.onPayTo_message_amount_(address,message,amount)
+    
     def refresh_all(self):
         self.helper.needUpdate()
         self.historyVC.needUpdate()

@@ -436,3 +436,42 @@ def present_qrcode_vc_for_data(vc : ObjCInstance, data : str, title : str = "QR 
     nav = UINavigationController.alloc().initWithRootViewController_(qvc).autorelease()
     vc.presentViewController_animated_completion_(nav,True,None)
     return qvc
+
+#########################################################################################
+# Poor man's signal/slot support
+#   For our limited ObjC objects which can't have Python attributes as instance members.
+#########################################################################################
+_cb_map = {}
+def add_callback(obj : ObjCInstance, name : str, callback : Callable) -> None:
+    global _cb_map
+    if name is None: raise ValueError("add_callback: name parameter must be not None")
+    if callable(callback):
+        m = _cb_map.get(obj.ptr.value, {})
+        m[name] = callback
+        _cb_map[obj.ptr.value] = m 
+    else:
+        remove_callback(obj, name)        
+
+def remove_all_callbacks(obj : ObjCInstance) -> None:
+    global _cb_map
+    _cb_map.pop(obj.ptr.value, None)
+
+def remove_callback(obj : ObjCInstance, name : str) -> None:
+    global _cb_map
+    if name is not None:
+        m = _cb_map.get(obj.ptr.value, None)
+        if m is None: return
+        m.pop(name, None)
+        if len(m) <= 0:
+            _cb_map.pop(obj.ptr.value, None)
+        else:
+            _cb_map[obj.ptr.value] = m
+    else:
+        remove_all_callbacks(obj)
+
+def get_callback(obj : ObjCInstance, name : str) -> Callable:
+    global _cb_map
+    def dummyCB(*args) -> None:
+        pass
+    if name is None: raise ValueError("get_callback: name parameter must be not None")
+    return _cb_map.get(obj.ptr.value, {}).get(name, dummyCB)
