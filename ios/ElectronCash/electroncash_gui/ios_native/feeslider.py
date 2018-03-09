@@ -11,16 +11,8 @@ def parent():
 def config():
     return parent().config
 
-
-def FeeSlider_add_callback(fs : ObjCInstance, callback : Callable) -> None:
-    utils.add_callback(fs, 'callback', callback)
-    
-def FeeSlider_remove_callback(fs : ObjCInstance) -> None:
-    utils.remove_callback(fs, 'callback')
-
-def FeeSlider_get_callback(fs : ObjCInstance) -> Callable:
-    return utils.get_callback(fs, 'callback')
-
+# uses utils.add_callback mechanism
+# Callbacks: 'callback' ==  func(bool,int,int) -> None
 class FeeSlider(UISlider):
 
     dyn = objc_property()
@@ -50,7 +42,7 @@ class FeeSlider(UISlider):
     @objc_method
     def dealloc(self) -> None:
         #utils.NSLog("Fee Slider dealloc!")
-        FeeSlider_remove_callback(self)
+        utils.remove_all_callbacks(self)
         self.dyn = None
         self.feeStep = None
         send_super(self, 'dealloc')
@@ -62,7 +54,7 @@ class FeeSlider(UISlider):
         #tooltip = self.get_tooltip(pos, fee_rate)
         #QToolTip.showText(QCursor.pos(), tooltip, self)
         #self.setToolTip(tooltip)
-        FeeSlider_get_callback(self)(self.dyn, pos, self.feeRate)
+        utils.get_callback(self,'callback')(self.dyn, pos, self.feeRate)
         #print("ToolTip: %s"%(str(self.getToolTip(pos, fee_rate))))
 
     @objc_method

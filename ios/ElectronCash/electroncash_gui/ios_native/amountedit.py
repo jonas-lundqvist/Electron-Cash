@@ -19,7 +19,13 @@ def base_unit():
 def decimal_point():
     return parent().get_decimal_point()
 
-class AmountEdit(UITextField):
+# can use utils.register_callback() for this object.
+# callbacks:
+#   'textChanged' == func(amountEdit : BTCAmountEdit) -> None
+#   'shortcut'    == func() -> None
+#   'frozen'      == func() -> None
+
+class BTCAmountEdit(UITextField):
     #frozen = pyqtSignal()
     #shortcut = pyqtSignal()
     isInt = objc_property()
@@ -88,6 +94,7 @@ class AmountEdit(UITextField):
                 s = s.replace('.','')
                 s = s[:p] + '.' + s[p:p+decimal_point()]
         self.text = s
+        utils.get_callback(self, 'textChanged')(self)
         # setText sets Modified to False.  Instead we want to remember
         # if updates were because of user modification.
         #self.setModified(self.hasFocus())
@@ -119,11 +126,12 @@ class AmountEdit(UITextField):
         return ns_from_py( int( p * x ) ) if x > 0 else None
 
     @objc_method
-    def setAmount_(self, amount : float) -> None:
+    def setAmount_(self, amount : ObjCInstance) -> None:
         if amount is None:
             self.text = ""  # Text(" ") # Space forces repaint in case units changed
         else:
-            self.text = format_satoshis_plain(amount, decimal_point())
+            self.text = format_satoshis_plain(py_from_ns(amount), decimal_point())
+        self.numbify()
 
 '''
 class BTCAmountEdit(AmountEdit):

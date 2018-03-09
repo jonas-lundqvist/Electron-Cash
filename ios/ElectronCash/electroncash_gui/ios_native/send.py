@@ -12,7 +12,8 @@ from electroncash.address import Address, ScriptOutput
 from electroncash import bitcoin
 import re
 from decimal import Decimal
-from .feeslider import FeeSlider, FeeSlider_add_callback
+from .feeslider import FeeSlider
+from .amountedit import BTCAmountEdit
 
 RE_ALIAS = '^(.*?)\s*\<([1-9A-Za-z]{26,})\>$'
 
@@ -23,7 +24,7 @@ class SendVC(UIViewController):
     qrvc = objc_property()
     qrScanErr = objc_property()
     amountSats = objc_property()
-    #feeSats = objc_property()
+    feeSats = objc_property()
     
     @objc_method
     def init(self):
@@ -32,7 +33,7 @@ class SendVC(UIViewController):
         self.title = _("Send")
         self.qrScanErr = False
         self.amountSats = 0        
-        #self.feeSats = 0
+        self.feeSats = None  # None ok on this one
         return self
     
     @objc_method
@@ -41,7 +42,7 @@ class SendVC(UIViewController):
         self.view = None
         self.qrScanErr = None
         self.amountSats = None
-        #self.feeSats = None
+        self.feeSats = None
         send_super(self, 'dealloc')
 
     @objc_method
@@ -122,6 +123,18 @@ class SendVC(UIViewController):
         but = self.view.viewWithTag_(1120)
         but.setTitle_forState_(_("Send"), UIControlStateNormal)
 
+        # Fee Label
+        lbl = self.view.viewWithTag_(300)
+        lbl.text = _("Fee")
+
+        tedit = self.view.viewWithTag_(330)
+        tedit.placeholder = _("Fee manual edit")
+        tedit.delegate = self
+        def onManualFee(t : ObjCInstance) -> None:
+            print("On Manual fee %s, %s satoshis"%(str(t.text),str(t.getAmount())))
+            self.feeSats = t.getAmount()
+        utils.add_callback(tedit, 'textChanged', onManualFee)
+
         # Error Label
         lbl = self.view.viewWithTag_(404)
         lbl.text = _("")
@@ -139,7 +152,7 @@ class SendVC(UIViewController):
             txt = " ".join(str(slider.getToolTip(pos,fee_rate)).split("\n"))
             feelbl.text = txt
             #print("testcb: %d %d %d.. tt='%s'"%(int(dyn), pos, fee_rate,txt))
-        FeeSlider_add_callback(slider, sliderCB)
+        utils.add_callback(slider, 'callback', sliderCB)
         
     @objc_method
     def viewDidLoad(self) -> None:
@@ -163,8 +176,24 @@ class SendVC(UIViewController):
         # fee amount label
         lbl = self.view.viewWithTag_(320)
         lbl.text = self.view.viewWithTag_(310).getToolTip(-1,-1)
+        # Manual edit .. re-set the amount in satoshis from our cached value, in case they changed units in the prefs screen
+        tedit = self.view.viewWithTag_(330)
+        tedit.setAmount_(self.feeSats)
+        # fee manual edit unit
+        lbl = self.view.viewWithTag_(340)
+        lbl.text = (parent.base_unit())
+
         #lbl.text = "{} {}".format(parent.format_amount(self.feeSats),parent.base_unit())
         self.onPayTo_message_amount_(None,None,None) # does some validation
+        
+    @objc_method
+    def viewWillDisappear_(self, animated: bool) -> None:
+        send_super(self, 'viewWillDisappear:', animated, argtypes=[c_bool])
+        parent = gui.ElectrumGui.gui
+        # Manual edit .. re-call the numify method, applying current units to fee
+        tedit = self.view.viewWithTag_(330)
+        self.feeSats = tedit.getAmount()
+        
 
     @objc_method
     def onQRBut_(self, but):
@@ -251,6 +280,9 @@ class SendVC(UIViewController):
         slider = self.view.viewWithTag_(310)
         slider.setValue_animated_(slider.minimumValue,True)
         slider.onMoved()
+        # manual edit fee
+        tf = self.view.viewWithTag_(330)
+        tf.setAmount(None)
         # self.amountSats set below..
         self.onPayTo_message_amount_(None,None,0)
         
