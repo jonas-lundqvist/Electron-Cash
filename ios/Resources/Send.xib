@@ -63,7 +63,7 @@
                             <nil key="textColor"/>
                             <nil key="highlightedColor"/>
                         </label>
-                        <textField opaque="NO" clipsSubviews="YES" tag="210" contentMode="right" horizontalCompressionResistancePriority="250" contentHorizontalAlignment="right" contentVerticalAlignment="center" borderStyle="roundedRect" placeholder="Enter amount (BCH)" textAlignment="center" minimumFontSize="7" clearButtonMode="whileEditing" translatesAutoresizingMaskIntoConstraints="NO" id="bfH-Zw-ELf">
+                        <textField opaque="NO" clipsSubviews="YES" tag="210" contentMode="right" horizontalCompressionResistancePriority="250" contentHorizontalAlignment="right" contentVerticalAlignment="center" borderStyle="roundedRect" placeholder="Enter amount (BCH)" textAlignment="center" minimumFontSize="7" clearButtonMode="whileEditing" translatesAutoresizingMaskIntoConstraints="NO" id="bfH-Zw-ELf" customClass="BTCAmountEdit">
                             <rect key="frame" x="139" y="172" width="159" height="30"/>
                             <constraints>
                                 <constraint firstAttribute="width" relation="greaterThanOrEqual" constant="119" id="7bO-Yv-PAh"/>
@@ -136,7 +136,7 @@
                         <label opaque="NO" userInteractionEnabled="NO" tag="404" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" minimumScaleFactor="0.5" translatesAutoresizingMaskIntoConstraints="NO" id="MlF-KI-I4b">
                             <rect key="frame" x="24" y="329" width="327" height="21"/>
                             <fontDescription key="fontDescription" type="italicSystem" pointSize="17"/>
-                            <color key="textColor" red="0.56933939456939697" green="0.067343518137931824" blue="0.10504210740327835" alpha="1" colorSpace="calibratedRGB"/>
+                            <color key="textColor" red="0.56141239404678345" green="0.0" blue="0.5690731406211853" alpha="1" colorSpace="calibratedRGB"/>
                             <nil key="highlightedColor"/>
                         </label>
                         <textField opaque="NO" clipsSubviews="YES" tag="330" contentMode="scaleToFill" contentHorizontalAlignment="left" contentVerticalAlignment="center" borderStyle="roundedRect" placeholder="Fee manual edit" textAlignment="natural" minimumFontSize="17" clearButtonMode="whileEditing" translatesAutoresizingMaskIntoConstraints="NO" id="Sws-3w-ut5" customClass="BTCAmountEdit">

@@ -32,8 +32,8 @@ class SendVC(UIViewController):
         self.stuff = []
         self.title = _("Send")
         self.qrScanErr = False
-        self.amountSats = 0        
-        self.feeSats = None  # None ok on this one
+        self.amountSats = None # None ok on this one       
+        self.feeSats = None  # None ok on this one too
         return self
     
     @objc_method
@@ -101,6 +101,11 @@ class SendVC(UIViewController):
         # Input amount text field
         tedit = self.view.viewWithTag_(210)
         tedit.delegate = self # Amount
+        def onAmount(t : ObjCInstance) -> None:
+            #print("On Amount %s, %s satoshis"%(str(t.text),str(t.getAmount())))
+            self.amountSats = t.getAmount()
+            self.chkOk()
+        utils.add_callback(tedit, 'textChanged', onAmount)
         
         lbl = self.view.viewWithTag_(220)
         lbl.text = _("Description")
@@ -131,8 +136,9 @@ class SendVC(UIViewController):
         tedit.placeholder = _("Fee manual edit")
         tedit.delegate = self
         def onManualFee(t : ObjCInstance) -> None:
-            print("On Manual fee %s, %s satoshis"%(str(t.text),str(t.getAmount())))
+            #print("On Manual fee %s, %s satoshis"%(str(t.text),str(t.getAmount())))
             self.feeSats = t.getAmount()
+            self.chkOk()
         utils.add_callback(tedit, 'textChanged', onManualFee)
 
         # Error Label
@@ -172,7 +178,7 @@ class SendVC(UIViewController):
         # Placeholder for amount
         tedit = self.view.viewWithTag_(210)
         tedit.placeholder = (_("Input amount") + " ({})").format(parent.base_unit())
-        tedit.delegate = self # Amount
+        tedit.setAmount_(self.amountSats) # in case unit changed in prefs
         # fee amount label
         lbl = self.view.viewWithTag_(320)
         lbl.text = self.view.viewWithTag_(310).getToolTip(-1,-1)
@@ -190,9 +196,12 @@ class SendVC(UIViewController):
     def viewWillDisappear_(self, animated: bool) -> None:
         send_super(self, 'viewWillDisappear:', animated, argtypes=[c_bool])
         parent = gui.ElectrumGui.gui
-        # Manual edit .. re-call the numify method, applying current units to fee
+        # Manual edit .. cache the feeSats in case they change stuff in prefs affecting this
         tedit = self.view.viewWithTag_(330)
         self.feeSats = tedit.getAmount()
+        # Amount edit --  cache the amountSats in case they change stuff in the prefs affecting this 
+        tedit = self.view.viewWithTag_(210)
+        self.amountSats = tedit.getAmount()
         
 
     @objc_method
@@ -215,7 +224,8 @@ class SendVC(UIViewController):
     @objc_method
     def textFieldShouldEndEditing_(self, tf : ObjCInstance) -> bool:
         print('textFieldShouldEndEditing %d'%tf.tag)
-        self.validateForm()
+        if tf.tag in [115]: # the other ones auto-call chkOk anyway.. todo: make addr line edit be a special validating class
+            self.chkOk()
         return True
         
     @objc_method
@@ -228,7 +238,6 @@ class SendVC(UIViewController):
     def onPayTo_message_amount_(self, address, message, amount) -> None:
         # address
         tf = self.view.viewWithTag_(115)
-        tfAddr = tf
         tf.text = str(address) if address is not None else tf.text
         tf.resignFirstResponder() # just in case
         # label
@@ -236,32 +245,54 @@ class SendVC(UIViewController):
         tf.text = str(message) if message is not None else tf.text
         tf.resignFirstResponder()
         # amount
-        c, u, x = gui.ElectrumGui.gui.wallet.get_balance()
         if amount == "!":
             amount = c+u
         tf = self.view.viewWithTag_(210)
         self.amountSats = int(amount) if type(amount) in [int,float] else self.amountSats
-        tf.text = gui.ElectrumGui.gui.format_amount(self.amountSats)
+        tf.setAmount_(self.amountSats)
+        #tf.text = gui.ElectrumGui.gui.format_amount(self.amountSats)
         tf.resignFirstResponder()
         self.qrScanErr = False
+        self.chkOk()
+        utils.NSLog("OnPayTo %s %s %s",str(address), str(message), str(amount))
+    
+    @objc_method
+    def chkOk(self) -> bool:
+        retVal = False
         errLbl = self.view.viewWithTag_(404)
-        self.view.viewWithTag_(1120).enabled = False
-        self.view.viewWithTag_(1110).enabled = False
+        addrTf = self.view.viewWithTag_(115)
+        sendBut = self.view.viewWithTag_(1120)
+        previewBut = self.view.viewWithTag_(1110)
+        amountTf = self.view.viewWithTag_(210)
+        c, u, x = gui.ElectrumGui.gui.wallet.get_balance()
+        
+        sendBut.enabled = False
+        previewBut.enabled = False
+        errLbl.txt = ""
+        
         try:
-            print("wallet balance: %f  amountSats: %f"%(float(c+u),float(self.amountSats)))
-            if self.amountSats > c+u:
+            #print("wallet balance: %f  amountSats: %f"%(float(c+u),float(self.amountSats)))
+            if self.amountSats is not None and self.feeSats is not None and self.amountSats+self.feeSats > c+u:
                 errLbl.text = _("Insufficient funds")
-                raise Exception()
-            elif self.amountSats <= 0:
+                raise Exception("InsufficientFunds")
+            try:
+                if len(addrTf.text): Parser().parse_address(addrTf.text) # raises exception on parse error
+            except:
+                errLbl.text = _("Invalid Address")
+                raise Exception("InvalidAddress")
+            if self.amountSats is None or self.amountSats <= 0 or self.feeSats is None: # or self.feeSats <= 0:
                 errLbl.text = ""
-                raise Exception()
-            Parser().parse_address(tfAddr.text)
+                raise Exception("SilentException") # silent error when amount or fee isn't yet specified
+            
             self.view.viewWithTag_(1120).enabled = True
             self.view.viewWithTag_(1110).enabled = True
-            errLbl.text = ""
-        except:
+            retVal = True
+        except Exception as e:
+            #print("Exception :" + str(e))
             pass
-        utils.NSLog("OnPayTo %s %s %s",str(address), str(message), str(amount))
+        
+        return retVal
+    
         
     @objc_method
     def onMaxBut_(self, but : ObjCInstance) -> None:
@@ -284,59 +315,16 @@ class SendVC(UIViewController):
         tf = self.view.viewWithTag_(330)
         tf.setAmount(None)
         # self.amountSats set below..
-        self.onPayTo_message_amount_(None,None,0)
+        self.amountSats = None
+        self.view.viewWithTag_(404).text = ""  # clear errors
+        self.chkOk()
         
-    @objc_method
-    def validateForm(self) -> bool:
-        errLbl = self.view.viewWithTag_(404)
-        addrTf = self.view.viewWithTag_(115)
-        sendBut = self.view.viewWithTag_(1120)
-        previewBut = self.view.viewWithTag_(1110)
-        amountTf = self.view.viewWithTag_(210)
-        parser = Parser()
-
-        errLbl.text = ""
-        
-        amt = None
-        
-        class HasErrors(Exception):
-            pass
-        
-        try:
-            
-            try:
-                parser.parse_address(addrTf.text)
-            except:
-                errLbl.text = _("Invalid Address")
-                raise HasErrors("")
-            
-            try:
-                amt = parser.parse_amount(amountTf.text)
-            except:
-                errLbl.text = _("Invalid Amount")
-                raise HasErrors("")
-            
-            c, u, x = gui.ElectrumGui.gui.wallet.get_balance()
-            if c+u < amt:
-                errLbl.text = _("Insufficient funds")
-                raise HasErrors("")
-
-        except HasErrors as e:
-            #print ("HasErrors...")
-            previewBut.enabled = False
-            sendBut.enabled = False
-            return False
-        
-        self.onPayTo_message_amount_(None,None,amt)
-        return True
-
     @objc_method
     def checkQRData_(self, text) -> None:
         self.qrScanErr = False
         scan_f =  gui.ElectrumGui.gui.pay_to_URI
         parser = Parser()
 
-        #self.errors = []
         errors = []
         #if self.is_pr:
         #    return
