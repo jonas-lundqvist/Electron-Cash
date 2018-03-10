@@ -24,6 +24,7 @@ def decimal_point():
 #   'textChanged' == func(amountEdit : BTCAmountEdit) -> None
 #   'shortcut'    == func() -> None
 #   'frozen'      == func() -> None
+#   'edited'      == func(amountEdit : BTCAmountEdit) -> None
 
 class BTCAmountEdit(UITextField):
     #frozen = pyqtSignal()
@@ -84,10 +85,10 @@ class BTCAmountEdit(UITextField):
     @objc_method
     def numbify(self):
         text = str(self.text).strip()
-        if text == '!':
-            #self.shortcut.emit()
-            utils.get_callback(self, 'shortcut')()
-            return
+        #if text == '!':
+        #    #self.shortcut.emit()
+        #    utils.get_callback(self, 'shortcut')()
+        #    return
         #pos = self.cursorPosition()
         chars = '0123456789'
         if not self.isInt: chars +='.'
@@ -103,6 +104,7 @@ class BTCAmountEdit(UITextField):
         # if updates were because of user modification.
         #self.setModified(self.hasFocus())
         #self.setCursorPosition(pos)
+
         
     @objc_method
     def isModified(self) -> bool:
@@ -111,6 +113,7 @@ class BTCAmountEdit(UITextField):
     @objc_method
     def edited(self) -> None:
         self.modified = True
+        utils.get_callback(self, 'edited')(self)
 
     '''
     def paintEvent(self, event):

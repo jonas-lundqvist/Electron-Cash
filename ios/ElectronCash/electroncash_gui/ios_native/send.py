@@ -1,7 +1,7 @@
 from . import utils
 from . import gui
 from electroncash import WalletStorage, Wallet
-from electroncash.util import timestamp_to_datetime
+from electroncash.util import timestamp_to_datetime, NotEnoughFunds, ExcessiveFee
 from electroncash.i18n import _
 from .custom_objc import *
 import time
@@ -16,7 +16,15 @@ from .feeslider import FeeSlider
 from .amountedit import BTCAmountEdit
 
 RE_ALIAS = '^(.*?)\s*\<([1-9A-Za-z]{26,})\>$'
+        
+def parent():
+    return gui.ElectrumGui.gui
 
+def config():
+    return parent().config
+
+def wallet():
+    return parent().wallet
    
 class SendVC(UIViewController):
     stuff = objc_property() # an NSArray of stuff to display
@@ -25,6 +33,10 @@ class SendVC(UIViewController):
     qrScanErr = objc_property()
     amountSats = objc_property()
     feeSats = objc_property()
+    isMax = objc_property()
+    notEnoughFunds = objc_property()
+    excessiveFee = objc_property()
+    timer = objc_property()
     
     @objc_method
     def init(self):
@@ -34,6 +46,10 @@ class SendVC(UIViewController):
         self.qrScanErr = False
         self.amountSats = None # None ok on this one       
         self.feeSats = None  # None ok on this one too
+        self.isMax = False # should always be defined
+        self.notEnoughFunds = False
+        self.excessiveFee = False
+        self.timer = None
         return self
     
     @objc_method
@@ -43,6 +59,11 @@ class SendVC(UIViewController):
         self.qrScanErr = None
         self.amountSats = None
         self.feeSats = None
+        self.isMax = None
+        self.notEnoughFunds = None
+        if self.timer: self.timer.invalidate()  # kill a timer if it hasn't fired yet
+        self.timer = None
+        self.excessiveFee = None
         send_super(self, 'dealloc')
 
     @objc_method
@@ -52,7 +73,6 @@ class SendVC(UIViewController):
     @objc_method
     def reader_didScanResult_(self, reader, result) -> None:
         utils.NSLog("Reader data = '%s'",str(result))
-        # TODO: check result here..
         self.checkQRData_(result)
         if self.qrScanErr:
             if type(self.qrScanErr) is int and self.qrScanErr == 2:
@@ -62,7 +82,7 @@ class SendVC(UIViewController):
                 title = _("Invalid QR Code")
                 message = _("The QR code does not appear to be a valid BCH address or payment request.\nPlease try again.")
             reader.stopScanning()
-            gui.ElectrumGui.gui.show_error(
+            parent().show_error(
                 title = title,
                 message = message,
                 onOk = lambda: reader.startScanning()
@@ -104,8 +124,12 @@ class SendVC(UIViewController):
         def onAmount(t : ObjCInstance) -> None:
             #print("On Amount %s, %s satoshis"%(str(t.text),str(t.getAmount())))
             self.amountSats = t.getAmount()
-            self.chkOk()
+            if t.isModified():  self.updateFee()
+            else: self.chkOk()
         utils.add_callback(tedit, 'textChanged', onAmount)
+        def onEdit(t : ObjCInstance) -> None:
+            self.isMax = False
+        utils.add_callback(tedit, 'edited', onEdit)
         
         lbl = self.view.viewWithTag_(220)
         lbl.text = _("Description")
@@ -116,7 +140,7 @@ class SendVC(UIViewController):
         
         but = self.view.viewWithTag_(1090)
         but.setTitle_forState_(_("Max"), UIControlStateNormal)
-        but.addTarget_action_forControlEvents_(self, SEL(b'onMaxBut:'), UIControlEventPrimaryActionTriggered)
+        but.addTarget_action_forControlEvents_(self, SEL(b'spendMax'), UIControlEventPrimaryActionTriggered)
         
         but = self.view.viewWithTag_(1100)
         but.setTitle_forState_(_("Clear"), UIControlStateNormal)
@@ -133,12 +157,14 @@ class SendVC(UIViewController):
         lbl.text = _("Fee")
 
         tedit = self.view.viewWithTag_(330)
+        fee_e = tedit
         tedit.placeholder = _("Fee manual edit")
         tedit.delegate = self
         def onManualFee(t : ObjCInstance) -> None:
             #print("On Manual fee %s, %s satoshis"%(str(t.text),str(t.getAmount())))
             self.feeSats = t.getAmount()
-            self.chkOk()
+            if t.isModified(): self.updateFee()
+            else: self.chkOk()
         utils.add_callback(tedit, 'textChanged', onManualFee)
 
         # Error Label
@@ -157,6 +183,12 @@ class SendVC(UIViewController):
         def sliderCB(dyn : bool, pos : int, fee_rate : int) -> None:
             txt = " ".join(str(slider.getToolTip(pos,fee_rate)).split("\n"))
             feelbl.text = txt
+            fee_e.modified = False # force unfreeze fee
+            if dyn:
+                config().set_key('fee_level', pos, False)
+            else:
+                config().set_key('fee_per_kb', fee_rate, False)
+            self.spendMax() if self.isMax else self.updateFee()
             #print("testcb: %d %d %d.. tt='%s'"%(int(dyn), pos, fee_rate,txt))
         utils.add_callback(slider, 'callback', sliderCB)
         
@@ -169,9 +201,6 @@ class SendVC(UIViewController):
         send_super(self, 'viewWillAppear:', animated, argtypes=[c_bool])
         parent = gui.ElectrumGui.gui
 
-        # redo amount if prefs changed
-        tf = self.view.viewWithTag_(210)
-        tf.text = parent.format_amount(self.amountSats if self.amountSats is not None else 0)        
         # redo amount label if prefs changed
         lbl = self.view.viewWithTag_(200)
         lbl.text = (_("Amount") + (" ({})")).format(parent.base_unit())
@@ -188,9 +217,19 @@ class SendVC(UIViewController):
         # fee manual edit unit
         lbl = self.view.viewWithTag_(340)
         lbl.text = (parent.base_unit())
+        # set manual fee edit to be enabled/disabled based on prefs settings
+        if parent.prefs_get_show_fee():
+            tedit.userInteractionEnabled = True
+            tedit.alpha = 1.0
+            lbl.alpha = 1.0
+        else:
+            tedit.userInteractionEnabled = False
+            tedit.alpha = .5
+            lbl.alpha = .5
 
         #lbl.text = "{} {}".format(parent.format_amount(self.feeSats),parent.base_unit())
-        self.onPayTo_message_amount_(None,None,None) # does some validation
+        self.chkOk()
+        #self.onPayTo_message_amount_(None,None,None) # does some validation
         
     @objc_method
     def viewWillDisappear_(self, animated: bool) -> None:
@@ -223,14 +262,14 @@ class SendVC(UIViewController):
 
     @objc_method
     def textFieldShouldEndEditing_(self, tf : ObjCInstance) -> bool:
-        print('textFieldShouldEndEditing %d'%tf.tag)
+        #print('textFieldShouldEndEditing %d'%tf.tag)
         if tf.tag in [115]: # the other ones auto-call chkOk anyway.. todo: make addr line edit be a special validating class
             self.chkOk()
         return True
         
     @objc_method
     def textFieldShouldReturn_(self, tf : ObjCInstance) -> bool:
-        print('textFieldShouldReturn %d'%tf.tag)
+        #print('textFieldShouldReturn %d'%tf.tag)
         tf.resignFirstResponder()
         return True
     
@@ -246,11 +285,10 @@ class SendVC(UIViewController):
         tf.resignFirstResponder()
         # amount
         if amount == "!":
-            amount = c+u
+            self.spendMax()
         tf = self.view.viewWithTag_(210)
         self.amountSats = int(amount) if type(amount) in [int,float] else self.amountSats
         tf.setAmount_(self.amountSats)
-        #tf.text = gui.ElectrumGui.gui.format_amount(self.amountSats)
         tf.resignFirstResponder()
         self.qrScanErr = False
         self.chkOk()
@@ -264,17 +302,23 @@ class SendVC(UIViewController):
         sendBut = self.view.viewWithTag_(1120)
         previewBut = self.view.viewWithTag_(1110)
         amountTf = self.view.viewWithTag_(210)
-        c, u, x = gui.ElectrumGui.gui.wallet.get_balance()
         
         sendBut.enabled = False
         previewBut.enabled = False
-        errLbl.txt = ""
+        errLbl.text = ""
+        
+        #c, u, x = wallet().get_balance()        
+        #a = self.amountSats if self.amountSats is not None else 0
+        #f = self.feeSats if self.feeSats is not None else 0
         
         try:
             #print("wallet balance: %f  amountSats: %f"%(float(c+u),float(self.amountSats)))
-            if self.amountSats is not None and self.feeSats is not None and self.amountSats+self.feeSats > c+u:
+            if self.notEnoughFunds:
                 errLbl.text = _("Insufficient funds")
                 raise Exception("InsufficientFunds")
+            if self.excessiveFee:
+                errLbl.text = _("Max fee exceeded")
+                raise Exception("ExcessiveFee")
             try:
                 if len(addrTf.text): Parser().parse_address(addrTf.text) # raises exception on parse error
             except:
@@ -295,15 +339,21 @@ class SendVC(UIViewController):
     
         
     @objc_method
-    def onMaxBut_(self, but : ObjCInstance) -> None:
-        c, u, x = gui.ElectrumGui.gui.wallet.get_balance()
-        self.onPayTo_message_amount_(None,None,c+u)
+    def spendMax(self) -> None:
+        self.isMax = True
+        self.updateFee()  # schedule update
         
     @objc_method
     def clear(self) -> None:
+        self.isMax = False
+        self.notEnoughFunds = False
+        self.excessiveFee = False
         # address
         tf = self.view.viewWithTag_(115)
         tf.text = ""
+        # Amount
+        tf = self.view.viewWithTag_(210)
+        tf.setAmount_(None)
         # label
         tf = self.view.viewWithTag_(230)
         tf.text = ""
@@ -313,16 +363,17 @@ class SendVC(UIViewController):
         slider.onMoved()
         # manual edit fee
         tf = self.view.viewWithTag_(330)
-        tf.setAmount(None)
+        tf.setAmount_(None)
         # self.amountSats set below..
         self.amountSats = None
+        self.feeSats = None
         self.view.viewWithTag_(404).text = ""  # clear errors
         self.chkOk()
         
     @objc_method
     def checkQRData_(self, text) -> None:
         self.qrScanErr = False
-        scan_f =  gui.ElectrumGui.gui.pay_to_URI
+        scan_f =  parent().pay_to_URI
         parser = Parser()
 
         errors = []
@@ -335,11 +386,14 @@ class SendVC(UIViewController):
         total = 0
         #self.payto_address = None
         payto_address = None
+        
         if len(lines) == 1:
             data = lines[0]
             if data.lower().startswith(NetworkConstants.CASHADDR_PREFIX + ":"):
                 def errFunc(): self.qrScanErr = True
+                self.isMax = False
                 scan_f(data, errFunc)
+                self.updateFee() # schedule a fee update later after qr decode completes
                 return
             try:
                 #self.payto_address = self.parse_output(data)
@@ -356,7 +410,7 @@ class SendVC(UIViewController):
                     self.onPayTo_message_amount_(data, None, None)
                     return
                 except Exception as e:
-                    print("EXCEPTION -- %s"%str(e))
+                    utils.NSLog("EXCEPTION -- %s",str(e))
                     pass
 
         is_max = False
@@ -388,9 +442,98 @@ class SendVC(UIViewController):
         elif len(outputs) != 1:
             self.qrScanErr = 2
         else:
-            print("onCheckPayToText.. last clause")
+            #print("onCheckPayToText.. last clause")
+            self.isMax = is_max
             self.onPayTo_message_amount_(outputs[0][1].to_ui_string(),"",outputs[0][2])
+            self.updateFee()  #schedule a fee update later
         utils.NSLog("onCheckPayToText_ result: is_max=%s outputs=%s total=%s errors=%s",str(is_max),str(outputs),str(total),str(errors))
+
+    @objc_method
+    def updateFee(self):
+        # Enqueus a doUpdateFee() call for later -- this facility is provided for the fee slider so that it doesn't behave too slowly.
+        def onTimer() -> None:
+            self.timer = None
+            self.doUpdateFee()
+        if self.timer: self.timer.invalidate()
+        self.timer = utils.call_later(0.1,onTimer)
+
+    @objc_method
+    def doUpdateFee(self):
+        '''Recalculate the fee.  If the fee was manually input, retain it, but
+        still build the TX to see if there are enough funds.
+        '''
+        fee_e = self.view.viewWithTag_(330)
+        amount_e = self.view.viewWithTag_(210)
+        addr_e = self.view.viewWithTag_(115)
+        self.notEnoughFunds = False
+        self.excessiveFee = False
+        
+        def get_outputs(is_max):
+            outputs = []
+            if addr_e.text:
+                if is_max:
+                    amount = '!'
+                else:
+                    amount = amount_e.getAmount()
+                
+                try:
+                    _type, addr = Parser().parse_output(addr_e.text)
+                    outputs = [(_type, addr, amount)]
+                except Exception as e:
+                    #print("Testing get_outputs Exception: %s"%str(e))
+                    pass
+            return outputs[:]
+        def get_dummy():
+            return (bitcoin.TYPE_ADDRESS, wallet().dummy_address())
+        def get_coins():
+            # TODO: Implement pay_from
+            #if self.pay_from:
+            #    return self.pay_from
+            #else:
+            return wallet().get_spendable_coins(None, config())
+
+        
+        freeze_fee = (fee_e.isModified()
+                      and (fee_e.text or fee_e.isFirstResponder))
+        #print("freeze_fee=%s"%str(freeze_fee))
+        amount = '!' if self.isMax else amount_e.getAmount()
+        if amount is None:
+            if not freeze_fee:
+                fee_e.setAmount(None)
+            # TODO
+            #self.statusBar().showMessage('')
+        else:
+            fee = fee_e.getAmount() if freeze_fee else None
+            outputs = get_outputs(self.isMax)
+            if not outputs:
+                _type, addr = get_dummy()
+                outputs = [(_type, addr, amount)]
+            try:
+                tx = wallet().make_unsigned_transaction(get_coins(), outputs, config(), fee)
+            except NotEnoughFunds:
+                self.notEnoughFunds = True
+                if not freeze_fee:
+                    fee_e.setAmount_(None)
+                self.chkOk()
+                return
+            except ExcessiveFee:
+                self.excessiveFee = True
+                self.chkOk()
+                return
+            except BaseException as e:
+                print("BASE EXCEPTION %s"%str(e))
+                self.chkOk()
+                return
+
+            if not freeze_fee:
+                fee = None if self.notEnoughFunds else tx.get_fee()
+                fee_e.setAmount_(fee)
+
+            if self.isMax:
+                amount = tx.output_value()
+                amount_e.setAmount_(amount)
+        self.chkOk()
+
 
 class Parser:
     def parse_address_and_amount(self, line):
@@ -415,5 +558,5 @@ class Parser:
     def parse_amount(self, x):
         if x.strip() == '!':
             return '!'
-        p = pow(10, gui.ElectrumGui.gui.get_decimal_point())
+        p = pow(10, parent().get_decimal_point())
         return int(p * Decimal(x.strip()))

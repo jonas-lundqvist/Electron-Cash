@@ -837,7 +837,7 @@ class ElectrumGui(PrintError):
         return self.config.get('hide_downloading_banner', False)
         
     def prefs_get_show_fee(self) -> bool:
-        return self.config.get('show_fee', False)
+        return self.config.get('show_fee', True)
     
     def prefs_set_show_fee(self, b : bool) -> None:
         self.config.set_key('show_fee', bool(b))
