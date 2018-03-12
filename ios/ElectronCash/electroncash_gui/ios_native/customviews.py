@@ -142,7 +142,7 @@ class TxInputsOutputsTVC(NSObject):
                 else:
                     cell.backgroundColor = colorMine
                 
-            cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator
+            cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator#UITableViewCellAccessoryDetailDisclosureButton#UITableViewCellAccessoryDetailButton #
         except Exception as e:
             print("exception in %s: %s"%(__class__.name,str(e)))
             cell.textLabel.attributedText = None
@@ -373,5 +373,7 @@ def create_transaction_detail_view(txDetailViewController : ObjCInstance) -> (Ob
     # refreshes the tableview with data    
     tvc = TxInputsOutputsTVC.tvcWithTxRaw_inputTV_outputTV_(tx.raw, inputsTV, outputsTV)
     
+    #view.translatesAutoresizingMaskIntoConstraints = False
+    #view.viewWithTag_(1).translatesAutoresizingMaskIntoConstraints = True
     
     return (view, copyBut, qrBut, descTf)

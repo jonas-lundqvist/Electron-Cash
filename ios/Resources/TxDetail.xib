@@ -14,8 +14,8 @@
             <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
             <autoresizingMask key="autoresizingMask"/>
             <subviews>
-                <view contentMode="scaleToFill" misplaced="YES" translatesAutoresizingMaskIntoConstraints="NO" id="3WW-S2-Z6u" userLabel="Content View">
-                    <rect key="frame" x="0.0" y="0.0" width="375" height="900"/>
+                <view tag="1" contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="3WW-S2-Z6u" userLabel="Content View">
+                    <rect key="frame" x="0.0" y="0.0" width="375" height="750"/>
                     <subviews>
                         <label opaque="NO" userInteractionEnabled="NO" tag="100" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Transaction ID:" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="WrI-h8-zxW">
                             <rect key="frame" x="10" y="10" width="360" height="21"/>
@@ -142,24 +142,24 @@
                             <nil key="highlightedColor"/>
                         </label>
                         <tableView clipsSubviews="YES" tag="1000" contentMode="scaleToFill" alwaysBounceVertical="YES" style="plain" separatorStyle="default" rowHeight="44" sectionHeaderHeight="28" sectionFooterHeight="28" translatesAutoresizingMaskIntoConstraints="NO" id="UEi-8S-wuv" userLabel="Inputs Table View">
-                            <rect key="frame" x="20" y="329" width="350" height="150"/>
+                            <rect key="frame" x="20" y="329" width="350" height="200"/>
                             <color key="backgroundColor" red="0.97693693640000001" green="1" blue="0.94813501830000002" alpha="1" colorSpace="calibratedRGB"/>
                             <constraints>
-                                <constraint firstAttribute="height" constant="150" id="PXd-tz-fT5"/>
+                                <constraint firstAttribute="height" constant="200" id="PXd-tz-fT5"/>
                             </constraints>
                         </tableView>
                         <tableView clipsSubviews="YES" tag="1100" contentMode="scaleToFill" alwaysBounceVertical="YES" style="plain" separatorStyle="default" rowHeight="44" sectionHeaderHeight="28" sectionFooterHeight="28" translatesAutoresizingMaskIntoConstraints="NO" id="cAi-tk-ewi" userLabel="Outputs Table View">
-                            <rect key="frame" x="20" y="494" width="350" height="150"/>
+                            <rect key="frame" x="20" y="544" width="350" height="200"/>
                             <color key="backgroundColor" red="0.99270844459999996" green="0.96421206000000004" blue="0.99976575369999998" alpha="1" colorSpace="calibratedRGB"/>
                             <constraints>
-                                <constraint firstAttribute="height" constant="150" id="bIu-XV-H6m"/>
+                                <constraint firstAttribute="height" constant="200" id="bIu-XV-H6m"/>
                             </constraints>
                         </tableView>
                         <view contentMode="scaleToFill" verticalCompressionResistancePriority="1000" translatesAutoresizingMaskIntoConstraints="NO" id="Eiy-kZ-rfQ" userLabel="DummySpaceView">
-                            <rect key="frame" x="0.0" y="644" width="375" height="300"/>
+                            <rect key="frame" x="0.0" y="744" width="374.5" height="150"/>
                             <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
                             <constraints>
-                                <constraint firstAttribute="height" constant="300" id="Pvb-qY-GFc"/>
+                                <constraint firstAttribute="height" constant="150" id="Pvb-qY-GFc"/>
                             </constraints>
                         </view>
                     </subviews>
@@ -220,6 +220,7 @@
                         <constraint firstItem="LGO-pE-SfD" firstAttribute="centerY" secondItem="dB1-RO-Ni3" secondAttribute="centerY" id="tgO-5S-8nc"/>
                         <constraint firstItem="UEi-8S-wuv" firstAttribute="leading" secondItem="3WW-S2-Z6u" secondAttribute="leading" constant="20" id="v7M-2a-FTn"/>
                         <constraint firstAttribute="trailing" secondItem="m8F-J1-RxG" secondAttribute="trailing" constant="5" id="wk8-p3-JMY"/>
+                        <constraint firstAttribute="height" constant="750" id="xmf-8V-Ksb"/>
                         <constraint firstAttribute="trailing" secondItem="Z2N-ff-77r" secondAttribute="trailing" constant="5" id="xrE-31-Iyk"/>
                         <constraint firstItem="rfQ-PC-KHL" firstAttribute="leading" secondItem="3WW-S2-Z6u" secondAttribute="leading" constant="10" id="zEy-PZ-dBY"/>
                     </constraints>
@@ -227,10 +228,9 @@
             </subviews>
             <constraints>
                 <constraint firstAttribute="trailing" secondItem="3WW-S2-Z6u" secondAttribute="trailing" id="2ge-6a-ydM"/>
-                <constraint firstAttribute="bottom" secondItem="3WW-S2-Z6u" secondAttribute="bottom" id="89V-tH-JeT"/>
-                <constraint firstItem="3WW-S2-Z6u" firstAttribute="centerY" secondItem="vc2-GA-rdq" secondAttribute="centerY" id="HE8-d1-SVQ"/>
                 <constraint firstItem="3WW-S2-Z6u" firstAttribute="top" secondItem="vc2-GA-rdq" secondAttribute="top" id="aMy-fu-5s2"/>
                 <constraint firstItem="3WW-S2-Z6u" firstAttribute="centerX" secondItem="vc2-GA-rdq" secondAttribute="centerX" id="iwd-Rt-5h7"/>
+                <constraint firstAttribute="bottom" secondItem="3WW-S2-Z6u" secondAttribute="bottom" id="lWX-Et-q4W"/>
                 <constraint firstItem="3WW-S2-Z6u" firstAttribute="leading" secondItem="vc2-GA-rdq" secondAttribute="leading" id="rnK-cz-d7m"/>
             </constraints>
             <point key="canvasLocation" x="220.5" y="108.5"/>
