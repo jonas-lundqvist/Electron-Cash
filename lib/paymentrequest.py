@@ -72,6 +72,7 @@ PR_PAID    = 3     # send and propagated
 def get_payment_request(url):
     u = urllib.parse.urlparse(url)
     error = None
+    response = None
     if u.scheme in ['http', 'https']:
         try:
             response = requests.request('GET', url, headers=REQUEST_HEADERS)
@@ -86,7 +87,10 @@ def get_payment_request(url):
             print_error('fetched payment request', url, len(response.content))
         except requests.exceptions.RequestException:
             data = None
-            error = "payment URL not pointing to a valid server"
+            if response is not None:
+                error = response.content.decode()
+            else:
+                error = "payment URL not pointing to a valid server"
     elif u.scheme == 'file':
         try:
             with open(u.path, 'r') as f:
@@ -265,7 +269,7 @@ class PaymentRequest:
         paymnt.merchant_data = pay_det.merchant_data
         paymnt.transactions.append(bfh(raw_tx))
         ref_out = paymnt.refund_to.add()
-        ref_out.script = util.bfh(transaction.Transaction.pay_script(TYPE_ADDRESS, refund_addr))
+        ref_out.script = bfh(transaction.Transaction.pay_script(refund_addr))
         paymnt.memo = "Paid using Electrum"
         pm = paymnt.SerializeToString()
         payurl = urllib.parse.urlparse(pay_det.payment_url)
