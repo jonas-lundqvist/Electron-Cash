@@ -331,6 +331,9 @@ UITextFieldViewModeWhileEditing = 1
 UITextFieldViewModeUnlessEditing = 2
 UITextFieldViewModeAlways = 3
 
+# UITextView.h
+UITextView = ObjCClass('UITextView')
+
 # UIWebView.h
 UIWebView = ObjCClass('UIWebView')
 
@@ -663,3 +666,14 @@ UIInterfaceOrientationMaskPortraitUpsideDown = (1 << UIInterfaceOrientationPortr
 UIInterfaceOrientationMaskLandscape = (UIInterfaceOrientationMaskLandscapeLeft | UIInterfaceOrientationMaskLandscapeRight)
 UIInterfaceOrientationMaskAll = (UIInterfaceOrientationMaskPortrait | UIInterfaceOrientationMaskLandscapeLeft | UIInterfaceOrientationMaskLandscapeRight | UIInterfaceOrientationMaskPortraitUpsideDown)
 UIInterfaceOrientationMaskAllButUpsideDown = (UIInterfaceOrientationMaskPortrait | UIInterfaceOrientationMaskLandscapeLeft | UIInterfaceOrientationMaskLandscapeRight)
+
+# Font weight stuff
+UIFontWeightUltraLight = c_double.in_dll(uikit, "UIFontWeightUltraLight").value
+UIFontWeightThin = c_double.in_dll(uikit, "UIFontWeightThin").value
+UIFontWeightLight = c_double.in_dll(uikit, "UIFontWeightLight").value
+UIFontWeightRegular = c_double.in_dll(uikit, "UIFontWeightRegular").value
+UIFontWeightMedium = c_double.in_dll(uikit, "UIFontWeightMedium").value
+UIFontWeightSemibold = c_double.in_dll(uikit, "UIFontWeightSemibold").value
+UIFontWeightBold = c_double.in_dll(uikit, "UIFontWeightBold").value
+UIFontWeightHeavy = c_double.in_dll(uikit, "UIFontWeightHeavy").value
+UIFontWeightBlack = c_double.in_dll(uikit, "UIFontWeightBlack").value

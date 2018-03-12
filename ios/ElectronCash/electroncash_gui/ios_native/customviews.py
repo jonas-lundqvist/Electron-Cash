@@ -2,6 +2,235 @@ from electroncash.i18n import _, language
 from . import utils
 from . import gui
 from .uikit_bindings import *
+from electroncash.transaction import Transaction
+from electroncash.address import Address, PublicKey
+
+# ViewController used for the TxDetail view's "Inputs" and "Outputs" tables.. not exposed.. managed internally
+class TxInputsOutputsTVC(NSObject):
+    
+    txraw = objc_property()
+    tagin = objc_property()
+    tagout = objc_property()
+    
+    @objc_method
+    def initWithTxRaw_inputTV_outputTV_(self, txraw : ObjCInstance, inputTV : ObjCInstance, outputTV : ObjCInstance) -> ObjCInstance:
+        self = ObjCInstance(send_super(__class__, self, 'init'))
+        if self is not None:
+            self.txraw = txraw
+            if inputTV.tag == 0:
+                inputTV.tag = 9001
+            self.tagin = inputTV.tag
+            if outputTV.tag == 0:
+                outputTV.tag = self.tagin + 1
+            self.tagout = outputTV.tag
+            
+            if self.tagin == self.tagout or inputTV.ptr.value == outputTV.ptr.value:
+                raise ValueError("The input and output table views must be different and have different tags!")
+            
+            inputTV.delegate = self
+            outputTV.delegate = self
+            inputTV.dataSource = self
+            outputTV.dataSource = self
+            
+            from rubicon.objc.runtime import libobjc            
+            libobjc.objc_setAssociatedObject(inputTV.ptr, self.ptr, self.ptr, 0x301)
+            libobjc.objc_setAssociatedObject(outputTV.ptr, self.ptr, self.ptr, 0x301)
+        return self
+    
+    @objc_method
+    def dealloc(self) -> None:
+        print("TxInputsOutputsTVC dealloc!")
+        self.txraw = None
+        self.tagin = None
+        self.tagout = None
+        send_super(__class__, self, 'dealloc')
+        
+    @objc_classmethod
+    def tvcWithTxRaw_inputTV_outputTV_(cls, txraw, itv, otv) -> ObjCInstance:
+        return __class__.alloc().initWithTxRaw_inputTV_outputTV_(txraw,itv,otv).autorelease()
+    
+    @objc_method
+    def numberOfSectionsInTableView_(self, tv) -> int:
+        return 1
+    
+    @objc_method
+    def tableView_titleForHeaderInSection_(self, tv : ObjCInstance,section : int) -> ObjCInstance:
+        tx = Transaction(self.txraw)
+        tx.deserialize()
+        if tv.tag == self.tagin: return _("Inputs") + " (%d) "%len(tx.inputs())
+        elif tv.tag == self.tagout: return _("Outputs") + " (%d) "%len(tx.outputs())
+        return "*ERROR*"
+            
+    @objc_method
+    def tableView_numberOfRowsInSection_(self, tv : ObjCInstance, section : int) -> int:
+        tx = Transaction(self.txraw)
+        tx.deserialize()
+        
+        if tv.tag == self.tagin:
+            return len(tx.inputs())
+        elif tv.tag == self.tagout:
+            return len(tx.outputs())
+
+    @objc_method
+    def tableView_cellForRowAtIndexPath_(self, tv, indexPath):
+        #todo: - allow for label editing (popup menu?)
+        identifier = "%s_%s"%(str(type(self)) , str(indexPath.section))
+        cell = tv.dequeueReusableCellWithIdentifier_(identifier)
+        parent = gui.ElectrumGui.gui
+        wallet = parent.wallet
+        
+        def format_amount(amt):
+            return parent.format_amount(amt, whitespaces = True)
+
+        if cell is None:
+            cell = UITableViewCell.alloc().initWithStyle_reuseIdentifier_(UITableViewCellStyleSubtitle, identifier).autorelease()
+        try:
+            tx = Transaction(self.txraw)
+            tx.deserialize()
+        
+            isInput = None
+            x = None
+            if tv.tag == self.tagin:
+                isInput = True
+                x = tx.inputs()[indexPath.row]
+            elif tv.tag == self.tagout:
+                isInput = False
+                x = tx.get_outputs()[indexPath.row]
+            else:
+                raise ValueError("tv tag %d is neither input (%d) or output (%d) tag!"%(int(tv.tag),int(self.tagin),int(self.tagout)))
+            
+            colorExt = UIColor.colorWithRed_green_blue_alpha_(1.0,1.0,1.0,0.0)
+            colorChg = UIColor.colorWithRed_green_blue_alpha_(1.0,0.9,0.3,0.3)
+            colorMine = UIColor.colorWithRed_green_blue_alpha_(0.0,1.0,0.0,0.1)
+
+            cell.backgroundColor = colorExt
+            addr = None
+            
+            if isInput:
+                if x['type'] == 'coinbase':
+                    cell.textLabel.text = "coinbase"
+                    cell.detailTextLabel.text = ""
+                else:
+                    prevout_hash = x.get('prevout_hash')
+                    prevout_n = x.get('prevout_n')
+                    mytxt = ""
+                    mytxt += prevout_hash[0:8] + '...'
+                    mytxt += prevout_hash[-8:] + ":%-4d " % prevout_n
+                    addr = x['address']
+                    if isinstance(addr, PublicKey):
+                        addr = addr.toAddress()
+                    if addr is None:
+                        addr_text = _('unknown')
+                    else:
+                        addr_text = addr.to_ui_string()
+                    cell.textLabel.text = addr_text
+                    if x.get('value'):
+                        mytxt += format_amount(x['value'])
+                    cell.detailTextLabel.text = mytxt
+            else:
+                colorMine = UIColor.colorWithRed_green_blue_alpha_(1.0,0.0,1.0,0.1)
+                addr, v = x
+                #cursor.insertText(addr.to_ui_string(), text_format(addr))
+                cell.textLabel.text = addr.to_ui_string()
+                cell.detailTextLabel.text = ""
+                if v is not None:
+                    cell.detailTextLabel.text = format_amount(v)
+
+            if isinstance(addr, Address) and wallet.is_mine(addr):
+                if wallet.is_change(addr):
+                    cell.backgroundColor = colorChg
+                else:
+                    cell.backgroundColor = colorMine
+                
+            cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator
+        except Exception as e:
+            print("exception in %s: %s"%(__class__.name,str(e)))
+            cell.textLabel.attributedText = None
+            cell.textLabel.text = "*Error*"
+            cell.detailTextLabel.attributedText = None
+            cell.detailTextLabel.text = None
+            cell.accessoryType = None
+        return cell
+    
+    # Below 2 methods conform to UITableViewDelegate protocol
+    @objc_method
+    def tableView_accessoryButtonTappedForRowWithIndexPath_(self, tv, indexPath):
+        print("ACCESSORY TAPPED CALLED")
+        pass
+    
+    @objc_method
+    def tableView_didSelectRowAtIndexPath_(self, tv, indexPath):
+        print("DID SELECT ROW CALLED FOR SECTION %s, ROW %s"%(str(indexPath.section),str(indexPath.row)))
+        parent = gui.ElectrumGui.gui
+        tv.deselectRowAtIndexPath_animated_(indexPath, True)
+        tx = Transaction(self.txraw)
+        tx.deserialize()
+        isInput = tv.tag == self.tagin
+        x = tx.inputs()[indexPath.row] if isInput else tx.get_outputs()[indexPath.row]
+        vc = parent.get_presented_viewcontroller()
+        title = _("Options")
+        message = _("Transaction Input {}").format(indexPath.row) if isInput else _("Transaction Output {}").format(indexPath.row)
+        
+        def getData(x, isAddr, isInput) -> str:
+            data = ""
+            if isAddr:
+                if isInput:
+                    addr = x['address']
+                    if isinstance(addr, PublicKey):
+                        addr = addr.toAddress()
+                    if addr is None:
+                        addr_text = _('unknown')
+                    else:
+                        addr_text = addr.to_ui_string()
+                else:
+                    addr, v = x
+                    addr_text = addr.to_ui_string()
+                data = addr_text
+            elif isInput:
+                prevout_hash = x.get('prevout_hash')
+                prevout_n = x.get('prevout_n')
+                data = prevout_hash[:] #+ ":%-4d" % prevout_n
+            print("Data=%s"%str(data))
+            return data
+        
+        def onCpy(isAddr : bool) -> None:
+            print ("onCpy %s"%str(isAddr))
+            UIPasteboard.generalPasteboard.string = getData(x,isAddr,isInput)
+            utils.show_notification(message=_("Text copied to clipboard"))
+        def onQR(isAddr : bool) -> None:
+            print ("onQR %s"%str(isAddr))
+            data = getData(x, isAddr, isInput)
+            qrvc = utils.present_qrcode_vc_for_data(parent.get_current_nav_controller(), data)
+            parent.add_navigation_bar_close_to_modal_vc(qrvc)
+
+        def onBlkXplo() -> None:
+            print ("onBlkXplo")
+            if isInput:
+                data = getData(x, False, True)
+            else:
+                data = getData(x, True, False)
+                data = Address.from_string(data)
+            parent.view_on_block_explorer(data, "tx" if isInput else "addr")
+        
+        actions = [
+            [ _("Copy address to clipboard"), onCpy, True ],
+            [ _("Show address as QR code"), onQR, True ],
+            [ _("Copy input hash to clipboard"), onCpy, False ],
+            [ _("Show input hash as QR code"), onQR, False ],
+            [ _("View on block explorer"), onBlkXplo ],
+            [ _("Cancel") ],
+        ]
+        if not isInput:
+            actions.pop(2)
+            actions.pop(2)
+        
+        utils.show_alert(vc = vc,
+                         title = title,
+                         message = message,
+                         actions = actions,
+                         cancel = _("Cancel"),
+                         style = UIAlertControllerStyleActionSheet)
+    
 
 # returns the view itself, plus the copy button and the qrcode button, plus the (sometimes nil!!) UITextField for the editable description
 #  the copy and the qrcode buttons are so that caller may attach event handing to them
@@ -12,209 +241,137 @@ def create_transaction_detail_view(txDetailViewController : ObjCInstance) -> (Ob
     wallet = parent.wallet
     base_unit = parent.base_unit()
     format_amount = parent.format_amount
-
-    tx = wallet.transactions.get(tx_hash)
+    tx = None
+    if txDetailViewController.rawtx:
+        try:
+            tx = Transaction(txDetailViewController.rawtx)
+            tx.deserialize()
+        except Exception as e:
+            tx = None
+            utils.NSLog("Got exception finding & deserializing tx with hash %s: %s",tx_hash,str(e))
+    if tx is None:
+        tx = wallet.transactions.get(tx_hash, None)
+        if tx is not None: tx.deserialize()
+    if tx is None: raise ValueError("Cannot find tx for hash: %s"%tx_hash)
     tx_hash, status_, label_, can_broadcast, amount, fee, height, conf, timestamp, exp_n = wallet.get_tx_info(tx)
     size = tx.estimated_size()
     # todo: broadcast button based on 'can_broadcast'
     can_sign = not tx.is_complete() and wallet.can_sign(tx) #and (wallet.can_sign(tx) # or bool(self.main_window.tx_external_keypairs))
     # todo: something akin to this: self.sign_button.setEnabled(can_sign)
 
-    viewsV1 = []
-    viewsV2 = []
-    viewsH1 = []
-
-    v = UILabel.new().autorelease()
-    v.text = _("Transaction ID:")
-    v.setContentHuggingPriority_forAxis_(UILayoutPriorityDefaultHigh, UILayoutConstraintAxisHorizontal)
-    v.setContentHuggingPriority_forAxis_(UILayoutPriorityDefaultHigh, UILayoutConstraintAxisVertical)
-    viewsV1.append(v)
-    v = UILabel.new().autorelease()
-    linkAttributes = {
-        NSForegroundColorAttributeName : UIColor.colorWithRed_green_blue_alpha_(0.05,0.4,0.65,1.0),
-        NSUnderlineStyleAttributeName : NSUnderlineStyleSingle              
-                      }
-    tx_hash_str = tx_hash if tx_hash is not None and tx_hash != "None" else _('Unknown')
-    v.attributedText = NSAttributedString.alloc().initWithString_attributes_(tx_hash_str, linkAttributes).autorelease()
-    v.backgroundColor = UIColor.colorWithWhite_alpha_(0.0,0.075)
-    v.setContentCompressionResistancePriority_forAxis_(UILayoutPriorityDefaultLow, UILayoutConstraintAxisHorizontal)
-    v.setContentCompressionResistancePriority_forAxis_(UILayoutPriorityDefaultHigh, UILayoutConstraintAxisVertical)
-    v.adjustsFontSizeToFitWidth = True
-    v.minimumScaleFactor = 0.25
-    v.numberOfLines = 0
-    v.lineBreakMode = NSLineBreakByTruncatingTail
-    # make the pseudo-link clickable
-    v.userInteractionEnabled = True
-    v.addGestureRecognizer_(UITapGestureRecognizer.alloc().initWithTarget_action_(txDetailViewController,SEL(b'onTxLink:')).autorelease())
-
-    viewsH1.append(v)
-    v = UIButton.buttonWithType_(UIButtonTypeCustom)
-    but1 = v
-    v.setImage_forState_(UIImage.imageNamed_("copy.png"), UIControlStateNormal)
-    v.setContentHuggingPriority_forAxis_(UILayoutPriorityDefaultHigh, UILayoutConstraintAxisHorizontal)
-    v.setContentHuggingPriority_forAxis_(UILayoutPriorityDefaultHigh, UILayoutConstraintAxisVertical)
-    v.setContentCompressionResistancePriority_forAxis_(UILayoutPriorityDefaultLow-1, UILayoutConstraintAxisVertical)
-    v.setContentCompressionResistancePriority_forAxis_(UILayoutPriorityDefaultLow-1, UILayoutConstraintAxisHorizontal)
-    viewsH1.append(v)
-    v = UIButton.buttonWithType_(UIButtonTypeCustom)
-    but2 = v
-    v.setImage_forState_(UIImage.imageNamed_("qrcode.png"), UIControlStateNormal)
-    v.setImage_forState_(UIImage.imageNamed_("qrcode_blue.png"), UIControlStateHighlighted)
-    v.setImage_forState_(UIImage.imageNamed_("qrcode_blue.png"), UIControlStateSelected)
-    v.setContentHuggingPriority_forAxis_(UILayoutPriorityDefaultHigh, UILayoutConstraintAxisHorizontal)
-    v.setContentHuggingPriority_forAxis_(UILayoutPriorityDefaultHigh, UILayoutConstraintAxisVertical)
-    v.setContentCompressionResistancePriority_forAxis_(UILayoutPriorityDefaultLow-1, UILayoutConstraintAxisVertical)
-    v.setContentCompressionResistancePriority_forAxis_(UILayoutPriorityDefaultLow-1, UILayoutConstraintAxisHorizontal)
-    viewsH1.append(v)
-
-    sv = UIStackView.alloc().initWithArrangedSubviews_(viewsH1).autorelease()
-    sv.axis = UILayoutConstraintAxisHorizontal
-    sv.layoutMargins = UIEdgeInsetsMake(0,10,0,-5)
-    sv.spacing = 3.0
-    sv.layoutMarginsRelativeArrangement = True
-
-    viewsV1.append(sv)
-    viewsH1 = []
-
-    descriptionTF = None
+    objs = NSBundle.mainBundle.loadNibNamed_owner_options_("TxDetail",None,None)
+    view = objs[0]
     
-    if tx_hash is not None and len(tx_hash): # always do this so they can edit the description to add a label to an empty tx
-        v = UILabel.new().autorelease()
-        v.text = _("Description") + ":  "
-        v.setContentHuggingPriority_forAxis_(UILayoutPriorityDefaultHigh, UILayoutConstraintAxisHorizontal)
-        v.setContentCompressionResistancePriority_forAxis_(UILayoutPriorityDefaultHigh, UILayoutConstraintAxisHorizontal)
-        viewsV1.append(v)
-
-        v = UITextField.new().autorelease()
-        v.text = label
-        v.placeholder = _("Tap to add a description")
-        if amount < 0:
-            v.backgroundColor = UIColor.colorWithRed_green_blue_alpha_(1.0,0.2,0.2,0.040)
-        else:
-            v.backgroundColor = UIColor.colorWithRed_green_blue_alpha_(0.0,0.0,1.0,0.040)
-        v.setContentCompressionResistancePriority_forAxis_(UILayoutPriorityDefaultHigh, UILayoutConstraintAxisHorizontal)
-        v.setContentCompressionResistancePriority_forAxis_(UILayoutPriorityDefaultHigh, UILayoutConstraintAxisVertical)
-        v.adjustsFontSizeToFitWidth = True
-        v.minimumFontSize = 8.0
-        v.borderStyle = UITextBorderStyleRoundedRect
-        v.clearButtonMode = UITextFieldViewModeWhileEditing
-        v.returnKeyType = UIReturnKeyDone
-        descriptionTF = v
-        
-        
-        sv = UIStackView.alloc().initWithArrangedSubviews_([v]).autorelease()
-        sv.layoutMargins = UIEdgeInsetsMake(0,10,0,-5)
-        sv.axis = UILayoutConstraintAxisHorizontal
-        sv.spacing = 5.0
-        sv.layoutMarginsRelativeArrangement = True
-        viewsV1.append(sv)
- 
-    v = UILabel.new().autorelease()
-    v.text = _("Status:") + "  "
-    v.setContentHuggingPriority_forAxis_(UILayoutPriorityDefaultHigh, UILayoutConstraintAxisHorizontal)
-    v.setContentCompressionResistancePriority_forAxis_(UILayoutPriorityDefaultHigh, UILayoutConstraintAxisHorizontal)
-    viewsH1.append(v)
+    # grab all the views
+    # Transaction ID:
+    txTit = view.viewWithTag_(100)
+    txHash = view.viewWithTag_(110)
+    copyBut = view.viewWithTag_(120)
+    qrBut = view.viewWithTag_(130)
+    # Description:
+    descTit = view.viewWithTag_(200)
+    descTf = view.viewWithTag_(210)
+    # Status:
+    statusTit = view.viewWithTag_(300)
+    statusIV = view.viewWithTag_(310)
+    statusLbl = view.viewWithTag_(320)
+    # Date:
+    dateTit = view.viewWithTag_(400)
+    dateLbl = view.viewWithTag_(410)
+    # Amount received/sent:
+    amtTit = view.viewWithTag_(500)
+    amtLbl = view.viewWithTag_(510)
+    # Size:
+    sizeTit = view.viewWithTag_(600)
+    sizeLbl = view.viewWithTag_(610)
+    # Fee:
+    feeTit = view.viewWithTag_(700)
+    feeLbl = view.viewWithTag_(710)
+    # Locktime:
+    lockTit = view.viewWithTag_(800)
+    lockLbl = view.viewWithTag_(810)
+    # Inputs
+    inputsTV = view.viewWithTag_(1000)
+    # Outputs
+    outputsTV = view.viewWithTag_(1100)
     
-    v = UIImageView.alloc().initWithImage_(img).autorelease()
-    v.autoresizingMask = UIViewAutoresizingNone
-    v.setContentHuggingPriority_forAxis_(UILayoutPriorityDefaultLow, UILayoutConstraintAxisHorizontal)
-    v.setContentCompressionResistancePriority_forAxis_(UILayoutPriorityDefaultLow, UILayoutConstraintAxisHorizontal)
-    viewsH1.append(v)
+    # Setup data for all the stuff
+    txTit.text = _("Transaction ID:")
+    tx_hash_str = tx_hash if tx_hash is not None and tx_hash != "None" and tx_hash != "Unknown" and tx_hash != _("Unknown") else _('Unknown')
+    if tx_hash == _("Unknown"):
+        txHash.text = tx_hash_str
+    else:
+        linkAttributes = {
+            NSForegroundColorAttributeName : UIColor.colorWithRed_green_blue_alpha_(0.05,0.4,0.65,1.0),
+            NSUnderlineStyleAttributeName : NSUnderlineStyleSingle              
+        }
+        txHash.attributedText = NSAttributedString.alloc().initWithString_attributes_(tx_hash_str, linkAttributes).autorelease()
+        txHash.userInteractionEnabled = True
+        txHash.addGestureRecognizer_(UITapGestureRecognizer.alloc().initWithTarget_action_(txDetailViewController,SEL(b'onTxLink:')).autorelease())
 
-    v = UILabel.new().autorelease()
+    descTit.text = _("Description") + ":"
+    descTf.text = label
+    descTf.placeholder = _("Tap to add a description")
+    if amount < 0:
+        descTf.backgroundColor = UIColor.colorWithRed_green_blue_alpha_(1.0,0.2,0.2,0.040)
+    else:
+        descTf.backgroundColor = UIColor.colorWithRed_green_blue_alpha_(0.0,0.0,1.0,0.040)
+    descTf.adjustsFontSizeToFitWidth = True
+    descTf.minimumFontSize = 8.0
+    descTf.clearButtonMode = UITextFieldViewModeWhileEditing
+
+    statusTit.text = _("Status:")
+    #statusIV.autoresizingMask = UIViewAutoresizingNone
+    statusIV.image = img
     ff = status_str
     try:
         if int(conf) > 0:
            ff = "%s %s"%(conf, _('confirmations'))
     except:
         pass        
-    v.text = _(ff)
-    viewsH1.append(v)
+    statusLbl.text = _(ff)
     
-    sv = UIStackView.alloc().initWithArrangedSubviews_(viewsH1).autorelease()
-    viewsH1 = []
-    sv.axis = UILayoutConstraintAxisHorizontal
-    sv.spacing = 5.0
-    viewsV1.append(sv)
-
     if timestamp or exp_n:
-        v = UILabel.new().autorelease()
         if timestamp:
-            v.text = _("Date") + ":   "
+            dateTit.text = _("Date") + ":"
+            dateLbl.text = date
         elif exp_n:
-            v.text = _("Expected confirmation time") + ':  '
-        v.setContentHuggingPriority_forAxis_(UILayoutPriorityDefaultHigh, UILayoutConstraintAxisHorizontal)
-        v.setContentCompressionResistancePriority_forAxis_(UILayoutPriorityDefaultHigh, UILayoutConstraintAxisHorizontal)
-        viewsH1.append(v)
-
-        v = UILabel.new().autorelease()
-        if timestamp:
-            v.text = date
-        elif exp_n:
-            txt = '%d blocks'%(exp_n) if exp_n > 0 else _('unknown (low fee)')
-            v.text = _('Expected confirmation time') + ': ' + txt
-        viewsH1.append(v)
-        
-        sv = UIStackView.alloc().initWithArrangedSubviews_(viewsH1).autorelease()
-        viewsH1 = []
-        sv.axis = UILayoutConstraintAxisHorizontal
-        sv.spacing = 5.0
-        viewsV1.append(sv)
-        
-    v = UILabel.new().autorelease()
-    if amount is None:
-        amount_str = _("Transaction unrelated to your wallet")
-    elif amount > 0:
-        amount_str = _("Amount received:") + ' %s'% format_amount(amount) + ' ' + base_unit
+            dateTit.text = _("Expected confirmation time") + ':'
+            dateLbl.text = '%d blocks'%(exp_n) if exp_n > 0 else _('unknown (low fee)')
     else:
-        amount_str = _("Amount sent:") + ' %s'% format_amount(-amount) + ' ' + base_unit
-    v.text = amount_str
-    v.adjustsFontSizeToFitWidth = True
-    v.minimumScaleFactor = 0.25
-    v.numberOfLines = 0
-    v.lineBreakMode = NSLineBreakByTruncatingTail
-    viewsV1.append(v)
+        # wtf? what to do here? 
+        dateTit.text = _("Date") + ":"
+        dateLbl.text = ""
+        dateTit.alpha = 0.5
+        dateLbl.alpha = 0.5
+ 
+    if amount is None:
+        amtTit.text = _("Amount") + ":"
+        amtLbl.text = _("Transaction unrelated to your wallet")
+    elif amount > 0:
+        amtTit.text = _("Amount received:")
+        amtLbl.text = ('%s'%(format_amount(amount))) + ' ' + base_unit
+    else:
+        amtTit.text = _("Amount sent:") 
+        amtLbl.text = ('%s'%(format_amount(-amount))) + ' ' + base_unit
 
-    size_str = _("Size:") + ' %d bytes'% size
-    v = UILabel.new().autorelease()
-    v.text = size_str
-    v.adjustsFontSizeToFitWidth = True
-    v.minimumScaleFactor = 0.25
-    v.numberOfLines = 0
-    v.lineBreakMode = NSLineBreakByTruncatingTail
-    viewsV1.append(v)
-    
-    fee_str = _("Fee") + ': %s'% (format_amount(fee) + ' ' + base_unit if fee is not None else _('unknown'))
+    sizeTit.text = _("Size:")
+    if size:
+        sizeLbl.text = ('%d bytes' % (size))
+    else:
+        sizeLbl.text = _("Unknown")
+
+    feeTit.text = _("Fee") + ':'
+    fee_str = '%s' % (format_amount(fee) + ' ' + base_unit if fee is not None else _('unknown'))
     if fee is not None:
         fee_str += '  ( %s ) '%  parent.format_fee_rate(fee/size*1000)
-    v = UILabel.new().autorelease()
-    v.text = fee_str
-    v.adjustsFontSizeToFitWidth = True
-    v.minimumScaleFactor = 0.25
-    v.numberOfLines = 0
-    v.lineBreakMode = NSLineBreakByTruncatingTail
-    viewsV1.append(v)
-
-
-    # bottom spacer view -- why?!?!        
-    v = UIView.new().autorelease()
-    v.autoresizingMask = UIViewAutoresizingFlexibleHeight
-    v.setContentHuggingPriority_forAxis_(UILayoutPriorityDefaultHigh, UILayoutConstraintAxisHorizontal)
-    v.setContentHuggingPriority_forAxis_(UILayoutPriorityDefaultHigh, UILayoutConstraintAxisVertical)
-    v.setContentCompressionResistancePriority_forAxis_(UILayoutPriorityDefaultLow, UILayoutConstraintAxisVertical)
-    viewsV1.append(v)
+    feeLbl.text = fee_str
     
-    sv = UIStackView.alloc().initWithArrangedSubviews_(viewsV1).autorelease()
-    sv.axis = UILayoutConstraintAxisVertical
-    sv.spacing = 10.0
-    #sv.distribution = UIStackViewDistributionFill
-    #sv.alignment = UIStackViewAlignmentFill
-    sv.layoutMarginsRelativeArrangement = True
-    #view = UIView.new().autorelease()
-    view = UIScrollView.new().autorelease()
-    sv.layoutMargins = UIEdgeInsetsMake(0,15,0,10) # top,left,bottom,right
-    sv.autoresizingMask = UIViewAutoresizingFlexibleHeight|UIViewAutoresizingFlexibleWidth
-    view.addSubview(sv)
-    sv.layoutIfNeeded()
-    view.contentSize = sv.systemLayoutSizeFittingSize_(CGSizeMake(UIScreen.mainScreen.bounds.size.width, 0))
-    return (view, but1, but2, descriptionTF)
+    if tx.locktime > 0:
+        lockLbl.text = str(tx.locktime)
+        
+    # refreshes the tableview with data    
+    tvc = TxInputsOutputsTVC.tvcWithTxRaw_inputTV_outputTV_(tx.raw, inputsTV, outputsTV)
+    
+    
+    return (view, copyBut, qrBut, descTf)

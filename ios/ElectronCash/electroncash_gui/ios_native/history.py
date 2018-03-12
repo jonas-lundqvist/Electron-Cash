@@ -10,19 +10,23 @@ from .uikit_bindings import *
 
 class TxDetail(UIViewController):
     # entry = ('', tx_hash, status_str, label, v_str, balance_str, date_str, conf, status, val, status_uiimage)
-    entry = objc_property() # an NSArray of basically the history entry
+    entry = objc_property()  # an NSArray of basically the history entry
+    rawtx = objc_property()  # string of the raw tx data suitable for building a Transaction instance using deserialize.  May be None
 
     @objc_method
-    def initWithEntry_(self, entry):
+    def initWithEntry_rawTx_(self, entry : ObjCInstance, rawtx : ObjCInstance) -> ObjCInstance:
         self = ObjCInstance(send_super(__class__, self, 'init'))
-        self.entry = entry
-        self.title = _("Transaction") + " " + _("Details")
+        if self:
+            self.entry = entry
+            self.rawtx = rawtx
+            self.title = _("Transaction") + " " + _("Details")
         return self
     
     @objc_method
     def dealloc(self) -> None:
         print("TxDetail dealloc")
         self.entry = None
+        self.rawtx = None
         self.title = None
         self.view = None
         send_super(__class__, self, 'dealloc')
@@ -206,7 +210,10 @@ class HistoryTableVC(UITableViewController):
         hentry = parent.history[indexPath.row]
         entry = [str(it) for it in hentry]
         entry.append(self.statusImages[hentry[8]])
-        parent.historyNav.pushViewController_animated_(TxDetail.alloc().initWithEntry_(entry).autorelease(), True)
+        tx = parent.wallet.transactions.get(hentry[1], None)
+        rawtx = None
+        if tx is not None: rawtx = tx.raw
+        parent.historyNav.pushViewController_animated_(TxDetail.alloc().initWithEntry_rawTx_(entry, rawtx).autorelease(), True)
     
     @objc_method
     def updateHistoryFromWallet(self):

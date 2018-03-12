@@ -920,8 +920,14 @@ class ElectrumGui(PrintError):
         p = pow(10, self.decimal_point)
         return int( p * x ) if x > 0 else None
     
+    def get_presented_viewcontroller(self) -> ObjCInstance:
+        return self.tabController if self.tabController.presentedViewController is None else self.tabController.presentedViewController
+    
+    def get_current_nav_controller(self) -> ObjCInstance:
+        return self.tabController.selectedViewController
+    
     def show_error(self, message, title = _("Error"), onOk = None):
-        vc = self.tabController if self.tabController.presentedViewController is None else self.tabController.presentedViewController
+        vc = self.get_presented_viewcontroller() 
         actions = [ [_('OK')] ]
         if onOk is not None and callable(onOk): actions[0].append(onOk)
         utils.show_alert(
