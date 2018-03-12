@@ -176,7 +176,7 @@ class UTILSModalPickerHelper(UIViewController):
  
     @objc_method
     def init(self) -> ObjCInstance:
-        self = ObjCInstance(send_super(self,'init'))
+        self = ObjCInstance(send_super(__class__, self,'init'))
         self.items = None
         self.lastSelection = 0
         self.needsDismiss = False
@@ -188,7 +188,7 @@ class UTILSModalPickerHelper(UIViewController):
         self.view = None
         self.needsDismiss = None
 #        print("UTILSModalPickerHelper dealloc")
-        send_super(self, 'dealloc')
+        send_super(__class__, self, 'dealloc')
     
     @objc_method
     def numberOfComponentsInPickerView_(self, p : ObjCInstance) -> int:

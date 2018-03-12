@@ -22,7 +22,7 @@ class FeeSlider(UISlider):
     @objc_method
     def init(self) -> ObjCInstance:
         #utils.NSLog("Fee Slider init!")
-        self = ObjCInstance(send_super(self, 'init'))
+        self = ObjCInstance(send_super(__class__, self, 'init'))
         if self is not None: self.commonInit()
         return self
     
@@ -35,7 +35,7 @@ class FeeSlider(UISlider):
     @objc_method
     def initWithCoder_(self, coder : ObjCInstance) -> ObjCInstance:
         #utils.NSLog("Fee Slider initWithCoder!")
-        self = ObjCInstance(send_super(self, 'initWithCoder:', coder.ptr, argtypes=[c_void_p]))
+        self = ObjCInstance(send_super(__class__, self, 'initWithCoder:', coder.ptr, argtypes=[c_void_p]))
         if self is not None: self.commonInit()
         return self
     
@@ -45,7 +45,7 @@ class FeeSlider(UISlider):
         utils.remove_all_callbacks(self)
         self.dyn = None
         self.feeStep = None
-        send_super(self, 'dealloc')
+        send_super(__class__, self, 'dealloc')
 
     @objc_method
     def onMoved(self) -> None:

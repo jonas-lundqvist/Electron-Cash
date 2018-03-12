@@ -12,7 +12,7 @@ class ReceiveVC(UIViewController):
     
     @objc_method
     def init(self):
-        self = ObjCInstance(send_super(self, 'init'))
+        self = ObjCInstance(send_super(__class__, self, 'init'))
         self.stuff = []
         self.title = _("Receive")
         return self
@@ -21,7 +21,7 @@ class ReceiveVC(UIViewController):
     def dealloc(self) -> None:
         self.stuff = None
         self.view = None
-        send_super(self, 'dealloc')
+        send_super(__class__, self, 'dealloc')
     
     @objc_method
     def didRotateFromInterfaceOrientation_(self, o : int) -> None:

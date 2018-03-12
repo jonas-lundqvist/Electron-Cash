@@ -40,7 +40,7 @@ class SendVC(UIViewController):
     
     @objc_method
     def init(self):
-        self = ObjCInstance(send_super(self, 'init'))
+        self = ObjCInstance(send_super(__class__, self, 'init'))
         self.stuff = []
         self.title = _("Send")
         self.qrScanErr = False
@@ -64,7 +64,7 @@ class SendVC(UIViewController):
         if self.timer: self.timer.invalidate()  # kill a timer if it hasn't fired yet
         self.timer = None
         self.excessiveFee = None
-        send_super(self, 'dealloc')
+        send_super(__class__, self, 'dealloc')
 
     @objc_method
     def didRotateFromInterfaceOrientation_(self, o : int) -> None:
@@ -198,7 +198,7 @@ class SendVC(UIViewController):
 
     @objc_method
     def viewWillAppear_(self, animated : bool) -> None:
-        send_super(self, 'viewWillAppear:', animated, argtypes=[c_bool])
+        send_super(__class__, self, 'viewWillAppear:', animated, argtypes=[c_bool])
         parent = gui.ElectrumGui.gui
 
         # redo amount label if prefs changed
@@ -233,7 +233,7 @@ class SendVC(UIViewController):
         
     @objc_method
     def viewWillDisappear_(self, animated: bool) -> None:
-        send_super(self, 'viewWillDisappear:', animated, argtypes=[c_bool])
+        send_super(__class__, self, 'viewWillDisappear:', animated, argtypes=[c_bool])
         parent = gui.ElectrumGui.gui
         # Manual edit .. cache the feeSats in case they change stuff in prefs affecting this
         tedit = self.view.viewWithTag_(330)

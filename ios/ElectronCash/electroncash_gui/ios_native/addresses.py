@@ -19,7 +19,7 @@ class AddressDetail(UIViewController):
     
     @objc_method
     def initWithAddrInfo_(self, addrInfo):
-        self = ObjCInstance(send_super(self, 'init'))
+        self = ObjCInstance(send_super(__class__, self, 'init'))
         self.addrInfo = addrInfo
         self.title = "Address Information"
         return self
@@ -30,7 +30,7 @@ class AddressDetail(UIViewController):
         self.addrInfo = None
         self.title = None
         self.view = None
-        send_super(self, 'dealloc')
+        send_super(__class__, self, 'dealloc')
     
     @objc_method
     def loadView(self) -> None:
@@ -51,7 +51,7 @@ class AddressesTableVC(UITableViewController):
 
     @objc_method
     def initWithStyle_(self, style : int):
-        self = ObjCInstance(send_super(self, 'initWithStyle:', style, argtypes=[c_int]))
+        self = ObjCInstance(send_super(__class__, self, 'initWithStyle:', style, argtypes=[c_int]))
         self.needsRefresh = False
         self.title = _("&Addresses").split('&')[1]
                 
@@ -63,7 +63,7 @@ class AddressesTableVC(UITableViewController):
     @objc_method
     def dealloc(self) -> None:
         self.needsRefresh = None
-        send_super(self, 'dealloc')
+        send_super(__class__, self, 'dealloc')
 
     @objc_method
     def numberOfSectionsInTableView_(self, tableView) -> int:

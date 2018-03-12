@@ -35,14 +35,14 @@ class BTCAmountEdit(UITextField):
 
     @objc_method
     def init(self) -> ObjCInstance:
-        self = ObjCInstance(send_super(self, 'init'))
+        self = ObjCInstance(send_super(__class__, self, 'init'))
         if self is not None:
             self.commonInit()
         return self
 
     @objc_method
     def initWithCoder_(self, coder : ObjCInstance) -> ObjCInstance:
-        self = ObjCInstance(send_super(self, 'initWithCoder:', coder.ptr, argtypes=[c_void_p]))
+        self = ObjCInstance(send_super(__class__, self, 'initWithCoder:', coder.ptr, argtypes=[c_void_p]))
         if self is not None:
             self.commonInit()
         return self
@@ -54,7 +54,7 @@ class BTCAmountEdit(UITextField):
         self.isShortcut = None
         self.modified = None
         utils.remove_all_callbacks(self)
-        send_super(self, 'dealloc')
+        send_super(__class__, self, 'dealloc')
 
     @objc_method
     def commonInit(self):

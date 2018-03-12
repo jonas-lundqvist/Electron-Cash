@@ -36,7 +36,7 @@ class PrefsVC(UITableViewController):
         
     @objc_method
     def init(self) -> ObjCInstance:
-        self = ObjCInstance(send_super(self, 'initWithStyle:', UITableViewStyleGrouped, argtypes=[c_int]))
+        self = ObjCInstance(send_super(__class__, self, 'initWithStyle:', UITableViewStyleGrouped, argtypes=[c_int]))
         self.title = _("Preferences")
         self.currencies = None
         self.exchanges = None
@@ -58,7 +58,7 @@ class PrefsVC(UITableViewController):
         self.normalButtonColor = None
         self.currencies = None
         self.exchanges = None
-        send_super(self, 'dealloc')
+        send_super(__class__, self, 'dealloc')
 
     @objc_method
     def refresh(self):
@@ -71,7 +71,7 @@ class PrefsVC(UITableViewController):
     @objc_method
     def viewDidAppear_(self, animated : bool) -> None:
         # do polish here?
-        send_super(self,'viewDidAppear:', animated, arg_types=[c_bool])
+        send_super(__class__, self,'viewDidAppear:', animated, arg_types=[c_bool])
 
     @objc_method
     def updateCurrencies(self):

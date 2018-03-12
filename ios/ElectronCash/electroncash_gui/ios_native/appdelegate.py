@@ -8,16 +8,22 @@ from . import utils
 import ElectronCash.app
 import time
 
+
 class PythonAppDelegate(UIResponder):
     
     firstRun = objc_property()
     
     @objc_method
     def init(self) -> ObjCInstance:
-        self = ObjCInstance(send_super(self, 'init'))
-        if self is not None:
-            self.firstRun = True
+        self = ObjCInstance(send_super(__class__, self, 'init'))
+        if self is not None: self.firstRun = True
+
         return self
+    
+    @objc_method
+    def dealloc(self) -> None:
+        self.firstRun = None # clear out var
+        send_super(__class__, self, 'dealloc')
     
     @objc_method
     def application_willFinishLaunchingWithOptions_(self, application : ObjCInstance, launchOptions : ObjCInstance) -> bool:

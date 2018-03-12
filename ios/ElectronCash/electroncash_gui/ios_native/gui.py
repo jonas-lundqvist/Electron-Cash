@@ -73,14 +73,14 @@ class MyTabBarController(UITabBarController):
     
     @objc_method
     def init(self) -> ObjCInstance:
-        self = ObjCInstance(send_super(self, 'init'))
+        self = ObjCInstance(send_super(__class__, self, 'init'))
         if self is not None: self.didLayout = False
         return self
     
     @objc_method
     def viewDidLayoutSubviews(self) -> None:
         self.didLayout = True
-        send_super(self, 'viewDidLayoutSubviews')
+        send_super(__class__, self, 'viewDidLayoutSubviews')
 
 
 class GuiHelper(NSObject):
@@ -95,7 +95,7 @@ class GuiHelper(NSObject):
     
     @objc_method
     def init(self):
-        self = ObjCInstance(send_super(self, 'init'))
+        self = ObjCInstance(send_super(__class__, self, 'init'))
         self.updateNeeded = False
         self.butsStatus = []
         self.butsStatusLabel = []
@@ -116,7 +116,7 @@ class GuiHelper(NSObject):
         self.butsSeed = None
         self.butsPrefs = None
         self.butsSend = None
-        send_super(self, 'dealloc')
+        send_super(__class__, self, 'dealloc')
     
     @objc_method
     def onTimer_(self, ignored):
