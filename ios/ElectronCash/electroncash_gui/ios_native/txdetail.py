@@ -39,7 +39,7 @@ class TxInputsOutputsTVC(NSObject):
     
     @objc_method
     def dealloc(self) -> None:
-        print("TxInputsOutputsTVC dealloc!")
+        print("TxInputsOutputsTVC dealloc")
         self.txraw = None
         self.tagin = None
         self.tagout = None
@@ -377,3 +377,78 @@ def create_transaction_detail_view(txDetailViewController : ObjCInstance) -> (Ob
     #view.viewWithTag_(1).translatesAutoresizingMaskIntoConstraints = True
     
     return (view, copyBut, qrBut, descTf)
+
+class TxDetail(UIViewController):
+    # entry = ('', tx_hash, status_str, label, v_str, balance_str, date_str, conf, status, val, status_uiimage)
+    entry = objc_property()  # an NSArray of basically the history entry
+    rawtx = objc_property()  # string of the raw tx data suitable for building a Transaction instance using deserialize.  May be None
+
+    @objc_method
+    def initWithEntry_rawTx_(self, entry : ObjCInstance, rawtx : ObjCInstance) -> ObjCInstance:
+        self = ObjCInstance(send_super(__class__, self, 'init'))
+        if self:
+            self.entry = entry
+            self.rawtx = rawtx
+            self.title = _("Transaction") + " " + _("Details")
+        return self
+    
+    @objc_method
+    def dealloc(self) -> None:
+        print("TxDetail dealloc")
+        self.entry = None
+        self.rawtx = None
+        self.title = None
+        self.view = None
+        send_super(__class__, self, 'dealloc')
+    
+    @objc_method
+    def loadView(self) -> None:
+        self.view, butCopy, butQR, descrTF = create_transaction_detail_view(self)
+        butCopy.addTarget_action_forControlEvents_(self, SEL(b'onCopyBut:'), UIControlEventPrimaryActionTriggered)
+        butQR.addTarget_action_forControlEvents_(self, SEL(b'onQRBut:'), UIControlEventPrimaryActionTriggered)
+        if descrTF is not None:
+            descrTF.delegate = self
+
+    @objc_method
+    def textFieldShouldReturn_(self, tf) -> bool:
+        #print("hit return, value is {}".format(tf.text))
+        tx_hash = self.entry[1]
+        new_label = tf.text
+        gui.ElectrumGui.gui.on_label_edited(tx_hash, new_label)
+        tf.resignFirstResponder()
+        return True
+
+    @objc_method
+    def onCopyBut_(self, but) -> None:
+        UIPasteboard.generalPasteboard.string = self.entry[1]
+        utils.show_notification(message=_("Text copied to clipboard"))
+
+    @objc_method
+    def onQRBut_(self, but) -> None:
+        #utils.show_notification(message="QR button unimplemented -- coming soon!", duration=2.0, color=(.9,0,0,1.0))
+        
+        qrvc = utils.present_qrcode_vc_for_data(vc=self.tabBarController,
+                                                data=self.entry[1],
+                                                title = _('QR code'))
+        gui.ElectrumGui.gui.add_navigation_bar_close_to_modal_vc(qrvc)
+
+        
+    @objc_method
+    def onTxLink_(self, gestureRecognizer : ObjCInstance) -> None:
+        def on_block_explorer() -> None:
+            parent = gui.ElectrumGui.gui
+            parent.view_on_block_explorer(self.entry[1], 'tx')
+            
+        utils.show_alert(
+            vc = self,
+            title = _("Options"),
+            message = _("Transaction ID:") + " " + self.entry[1][:12] + "...",
+            actions = [
+                [ 'Cancel' ],
+                [ _('Copy to clipboard'), self.onCopyBut_, None ],
+                [ _('Show as QR code'), self.onQRBut_, None ],
+                [ _("View on block explorer"), on_block_explorer ],
+            ],
+            cancel = 'Cancel',
+            style = UIAlertControllerStyleActionSheet
+        )
