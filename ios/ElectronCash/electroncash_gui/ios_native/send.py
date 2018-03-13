@@ -14,6 +14,8 @@ import re
 from decimal import Decimal
 from .feeslider import FeeSlider
 from .amountedit import BTCAmountEdit
+import traceback
+from electroncash.plugins import run_hook
 
 RE_ALIAS = '^(.*?)\s*\<([1-9A-Za-z]{26,})\>$'
         
@@ -25,7 +27,7 @@ def config():
 
 def wallet():
     return parent().wallet
-   
+  
 class SendVC(UIViewController):
     stuff = objc_property() # an NSArray of stuff to display
     qr = objc_property()
@@ -148,9 +150,11 @@ class SendVC(UIViewController):
         
         but = self.view.viewWithTag_(1110)
         but.setTitle_forState_(_("Preview"), UIControlStateNormal)
+        but.addTarget_action_forControlEvents_(self, SEL(b'onPreviewSendBut:'), UIControlEventPrimaryActionTriggered)
         
         but = self.view.viewWithTag_(1120)
         but.setTitle_forState_(_("Send"), UIControlStateNormal)
+        but.addTarget_action_forControlEvents_(self, SEL(b'onPreviewSendBut:'), UIControlEventPrimaryActionTriggered)
 
         # Fee Label
         lbl = self.view.viewWithTag_(300)
@@ -207,13 +211,17 @@ class SendVC(UIViewController):
         # Placeholder for amount
         tedit = self.view.viewWithTag_(210)
         tedit.placeholder = (_("Input amount") + " ({})").format(parent.base_unit())
+        wasModified = tedit.isModified()
         tedit.setAmount_(self.amountSats) # in case unit changed in prefs
+        tedit.modified = wasModified
         # fee amount label
         lbl = self.view.viewWithTag_(320)
         lbl.text = self.view.viewWithTag_(310).getToolTip(-1,-1)
         # Manual edit .. re-set the amount in satoshis from our cached value, in case they changed units in the prefs screen
         tedit = self.view.viewWithTag_(330)
+        wasModified = tedit.isModified()
         tedit.setAmount_(self.feeSats)
+        tedit.modified = wasModified
         # fee manual edit unit
         lbl = self.view.viewWithTag_(340)
         lbl.text = (parent.base_unit())
@@ -328,8 +336,8 @@ class SendVC(UIViewController):
                 errLbl.text = ""
                 raise Exception("SilentException") # silent error when amount or fee isn't yet specified
             
-            self.view.viewWithTag_(1120).enabled = True
-            self.view.viewWithTag_(1110).enabled = True
+            previewBut.enabled = False # for now, unimplemented.. #True
+            sendBut.enabled = True
             retVal = True
         except Exception as e:
             #print("Exception :" + str(e))
@@ -458,7 +466,7 @@ class SendVC(UIViewController):
         self.timer = utils.call_later(0.1,onTimer)
 
     @objc_method
-    def doUpdateFee(self):
+    def doUpdateFee(self) -> None:
         '''Recalculate the fee.  If the fee was manually input, retain it, but
         still build the TX to see if there are enough funds.
         '''
@@ -467,7 +475,7 @@ class SendVC(UIViewController):
         addr_e = self.view.viewWithTag_(115)
         self.notEnoughFunds = False
         self.excessiveFee = False
-        
+       
         def get_outputs(is_max):
             outputs = []
             if addr_e.text:
@@ -485,13 +493,6 @@ class SendVC(UIViewController):
             return outputs[:]
         def get_dummy():
             return (bitcoin.TYPE_ADDRESS, wallet().dummy_address())
-        def get_coins():
-            # TODO: Implement pay_from
-            #if self.pay_from:
-            #    return self.pay_from
-            #else:
-            return wallet().get_spendable_coins(None, config())
-
         
         freeze_fee = (fee_e.isModified()
                       and (fee_e.text or fee_e.isFirstResponder))
@@ -533,6 +534,145 @@ class SendVC(UIViewController):
                 amount = tx.output_value()
                 amount_e.setAmount_(amount)
         self.chkOk()
+
+    @objc_method
+    def onPreviewSendBut_(self, but) -> None:
+        isPreview = but.tag == 1110
+        print ("Clicked %s"%("Preview" if isPreview else "Send"))
+        self.doSend(isPreview)
+        
+    @objc_method
+    def showTransaction_desc_(self, txraw, desc) -> None:
+        print("showTransaction unimplemented. desc=%s, raw=%s"%(str(desc),str(txraw)))
+            
+    @objc_method
+    def doSend(self, preview : bool) -> None:
+        #if run_hook('abort_send', self):
+        #    return
+        r = read_send_form(self)
+        if not r:
+            return
+        outputs, fee, tx_desc, coins = r
+        try:
+            tx = wallet().make_unsigned_transaction(coins, outputs, config(), fee)
+        except NotEnoughFunds:
+            parent().show_error(_("Insufficient funds"))
+            return
+        except ExcessiveFee:
+            parent().show_error(_("Your fee is too high.  Max is 50 sat/byte."))
+            return
+        except BaseException as e:
+            traceback.print_exc(file=sys.stdout)
+            parent().show_error(str(e))
+            return
+
+        amount = tx.output_value() if self.isMax else sum(map(lambda x:x[2], outputs))
+        fee = tx.get_fee()
+
+        #if fee < self.wallet.relayfee() * tx.estimated_size() / 1000 and tx.requires_fee(self.wallet):
+            #parent().show_error(_("This transaction requires a higher fee, or it will not be propagated by the network"))
+            #return
+
+        if preview:
+            self.showTransaction_desc_(tx.serialize(), tx_desc)
+            return
+
+        # confirmation dialog
+        msg = [
+            _("Amount to be sent") + ": " + parent().format_amount_and_units(amount),
+            _("Mining fee") + ": " + parent().format_amount_and_units(fee),
+        ]
+
+        x_fee = run_hook('get_tx_extra_fee', wallet(), tx)
+        if x_fee:
+            x_fee_address, x_fee_amount = x_fee
+            msg.append( _("Additional fees") + ": " + parent().format_amount_and_units(x_fee_amount) )
+
+        confirm_rate = 2 * config().max_fee_rate()
+
+        # IN THE FUTURE IF WE WANT TO APPEND SOMETHING IN THE MSG ABOUT THE FEE, CODE IS COMMENTED OUT:
+        #if fee > confirm_rate * tx.estimated_size() / 1000:
+        #    msg.append(_('Warning') + ': ' + _("The fee for this transaction seems unusually high."))
+
+        if wallet().has_password():
+            msg.append("")
+            msg.append(_("Enter your password to proceed"))
+            password = parent().password_dialog('\n'.join(msg))
+            if not password:
+                return
+        else:
+            #msg.append(_('Proceed?'))
+            #password = None
+            #if not self.question('\n'.join(msg)):
+            #    return
+            pass
+
+        def sign_done(success) -> None:
+            if success:
+                if not tx.is_complete():
+                    self.showTransaction_desc_(tx.serialize(), tx_desc)
+                    self.clear()
+                else:
+                    parent().broadcast_transaction(tx, tx_desc)
+            #else:
+            #    parent().show_error(_("An Unknown Error Occurred"))
+        parent().sign_tx_with_password(tx, sign_done, password)
+
+
+def get_coins():
+    # TODO: Implement pay_from
+    #if self.pay_from:
+    #    return self.pay_from
+    #else:
+    return wallet().get_spendable_coins(None, config())
+           
+def read_send_form(send : ObjCInstance) -> tuple:
+    #if self.payment_request and self.payment_request.has_expired():
+    #    parent().show_error(_('Payment request has expired'))
+    #    return
+    label = send.view.viewWithTag_(230).text
+    addr_e = send.view.viewWithTag_(115)
+    fee_e = send.view.viewWithTag_(330)
+    outputs = []
+
+    if False: #self.payment_request:
+        #outputs = self.payment_request.get_outputs()
+        pass
+    else:
+        errors = False #self.payto_e.get_errors()
+        if errors:
+            #self.show_warning(_("Invalid lines found:") + "\n\n" + '\n'.join([ _("Line #") + str(x[0]+1) + ": " + x[1] for x in errors]))
+            #return
+            pass
+        amt_e = send.view.viewWithTag_(210)
+        try:
+            typ, addr = Parser().parse_output(addr_e.text)
+        except:
+            utils.show_alert(parent().get_presented_viewcontroller(), _("Error"), _("Invalid Address"))
+            return None
+        outputs = [(typ, addr, "!" if send.isMax else amt_e.getAmount())]
+
+        #if self.payto_e.is_alias and self.payto_e.validated is False:
+        #    alias = self.payto_e.toPlainText()
+        #    msg = _('WARNING: the alias "{}" could not be validated via an additional '
+        #            'security check, DNSSEC, and thus may not be correct.').format(alias) + '\n'
+        #    msg += _('Do you wish to continue?')
+        #    if not self.question(msg):
+        #        return
+
+    if not outputs:
+        utils.show_alert(parent().get_presented_viewcontroller(), _("Error"), _('No outputs'))
+        return None
+
+    for _type, addr, amount in outputs:
+        if amount is None:
+            utils.show_alert(parent().get_presented_viewcontroller(), _("Error"), _('Invalid Amount'))
+            return None
+
+    freeze_fee = fee_e.isModified() and fee_e.getAmount()#self.fee_e.isVisible() and self.fee_e.isModified() and (self.fee_e.text() or self.fee_e.hasFocus())
+    fee = fee_e.getAmount() if freeze_fee else None
+    coins = get_coins()
+    return outputs, fee, label, coins
 
 
 class Parser:

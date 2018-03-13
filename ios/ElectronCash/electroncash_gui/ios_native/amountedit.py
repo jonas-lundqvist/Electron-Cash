@@ -115,18 +115,6 @@ class BTCAmountEdit(UITextField):
         self.modified = True
         utils.get_callback(self, 'edited')(self)
 
-    '''
-    def paintEvent(self, event):
-        QLineEdit.paintEvent(self, event)
-        if self.base_unit:
-            panel = QStyleOptionFrame()
-            self.initStyleOption(panel)
-            textRect = self.style().subElementRect(QStyle.SE_LineEditContents, panel, self)
-            textRect.adjust(2, 0, -10, 0)
-            painter = QPainter(self)
-            painter.setPen(self.help_palette.brush(QPalette.Disabled, QPalette.Text).color())
-            painter.drawText(textRect, Qt.AlignRight | Qt.AlignVCenter, self.base_unit())
-    '''
     @objc_method
     def getAmount(self) -> ObjCInstance:
         try:
@@ -162,9 +150,11 @@ class BTCAmountEdit(AmountEdit):
         if p == 2:
             return 'bits'
         raise Exception('Unknown base unit')
+'''
 
-
+'''
 class BTCkBEdit(BTCAmountEdit):
-    def _base_unit(self):
-        return BTCAmountEdit._base_unit(self) + '/kB'
+    @objc_method
+    def baseUnit(self):
+        return base_unit() + '/kB'
 '''

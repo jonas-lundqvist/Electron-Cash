@@ -34,6 +34,13 @@ import qrcode
 import qrcode.image.svg
 import tempfile
 import random
+import queue
+from collections import namedtuple
+import threading
+import time
+
+from electroncash.i18n import _
+
 
 bundle_identifier = NSBundle.mainBundle.bundleIdentifier
 bundle_domain = '.'.join(bundle_identifier.split('.')[0:-1])
@@ -160,6 +167,7 @@ def call_later(timeout : float, func : Callable, *args) -> ObjCInstance:
     def OnTimer(t_in : objc_id) -> None:
         t = ObjCInstance(t_in)
         func(*args)
+        t.invalidate()
     timer = NSTimer.timerWithTimeInterval_repeats_block_(timeout, False, OnTimer)
     NSRunLoop.mainRunLoop().addTimer_forMode_(timer, NSDefaultRunLoopMode)
     return timer
@@ -475,3 +483,119 @@ def get_callback(obj : ObjCInstance, name : str) -> Callable:
         pass
     if name is None: raise ValueError("get_callback: name parameter must be not None")
     return _cb_map.get(obj.ptr.value, {}).get(name, dummyCB)
+
+#########################################################
+# TaskThread Stuff
+#  -- execute a python task in a separate (Python) Thread
+######################################################### 
+class TaskThread:
+    '''Thread that runs background tasks.  Callbacks are guaranteed
+    to happen in the main thread.'''
+    
+    Task = namedtuple("Task", "task cb_success cb_done cb_error")
+
+    def __init__(self, on_error=None):
+        self.on_error = on_error
+        self.tasks = queue.Queue()
+        self.worker = threading.Thread(target=self.run, name="TaskThread worker", daemon=True)
+        self.start()
+    
+    def __del__(self):
+        #NSLog("TaskThread __del__")
+        if self.worker:
+            if self.worker.is_alive():
+                NSLog("TaskThread worker was running, force cancel...")
+                self.stop()
+                self.wait()
+            self.worker = None
+
+    def start(self):
+        if self.worker and not self.worker.is_alive():
+            self.worker.start()
+            return True
+        elif not self.worker:
+            raise ValueError("The Thread worker was None!")
+        
+    def add(self, task, on_success=None, on_done=None, on_error=None):
+        on_error = on_error or self.on_error
+        self.tasks.put(TaskThread.Task(task, on_success, on_done, on_error))
+
+    def run(self):
+        while True:
+            task = self.tasks.get()
+            if not task:
+                break
+            try:
+                result = task.task()
+                do_in_main_thread(self.on_done, result, task.cb_done, task.cb_success)
+            except BaseException:
+                do_in_main_thread(self.on_done, sys.exc_info(), task.cb_done, task.cb_error)
+        #NSLog("Exiting worker thread...")
+        
+    def on_done(self, result, cb_done, cb):
+        # This runs in the main thread.
+        if cb_done:
+            cb_done()
+        if cb:
+            cb(result)
+
+    def stop(self):
+        if self.worker and self.worker.is_alive():
+            self.tasks.put(None)
+        
+    def wait(self):
+        if self.worker and self.worker.is_alive():
+            self.worker.join()
+            self.worker = None
+
+    @staticmethod
+    def test():
+        def onError(result):
+            NSLog("onError called, result=%s",str(result))
+        tt = TaskThread(onError)
+        def onDone():
+            nonlocal tt
+            NSLog("onDone called")
+            tt.stop()
+            tt.wait()
+            NSLog("test TaskThread joined ... returning.. hopefully cleanup will happen")
+            tt = None # cleanup?
+        def onSuccess(result):
+            NSLog("onSuccess called, result=%s",str(result))
+        def task():
+            NSLog("In task thread.. sleeping once every second for 10 seconds")
+            for i in range(0,10):
+                NSLog("Iter: %d",i)
+                time.sleep(0.2)
+            return "Yay!"
+        tt.add(task, onSuccess, onDone, onError)
+
+class WaitingDialog:
+    '''Shows a please wait dialog whilst runnning a task.  It is not
+    necessary to maintain a reference to this dialog.'''
+    def __init__(self, vc, message, task, on_success=None, on_error=None):
+        assert vc
+        title = _("Please wait")
+        self.vc = vc
+        self.thread = TaskThread()
+        def onPresented() -> None:
+            self.thread.add(task, on_success, self.dismisser, on_error)
+        self.alert=show_alert(vc = self.vc, title = title, message = message, actions=[], completion=onPresented)
+
+    def __del__(self):
+        #print("WaitingDialog __del__")
+        pass
+
+    def wait(self):
+        self.thread.wait()
+
+    def on_finished(self) -> None:
+        self.thread.stop()
+        self.wait()
+        self.alert = None
+        self.thread = None
+
+    def dismisser(self) -> None:
+        def compl() -> None:
+            self.on_finished()
+        self.vc.dismissViewControllerAnimated_completion_(True, compl)

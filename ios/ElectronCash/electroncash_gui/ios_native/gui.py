@@ -32,6 +32,7 @@ import base64
 import time
 from datetime import datetime
 from decimal import Decimal
+from functools import partial
 try:
     from .uikit_bindings import *
 except Exception as e:
@@ -45,7 +46,7 @@ from . import prefs
 from .custom_objc import *
 
 from electroncash.i18n import _, set_language, languages
-#from electroncash.plugins import run_hook
+from electroncash.plugins import run_hook
 from electroncash import WalletStorage, Wallet
 from electroncash.address import Address
 # from electroncash.synchronizer import Synchronizer
@@ -926,16 +927,22 @@ class ElectrumGui(PrintError):
     def get_current_nav_controller(self) -> ObjCInstance:
         return self.tabController.selectedViewController
     
+    # can be called from any thread, always runs in main thread
     def show_error(self, message, title = _("Error"), onOk = None):
-        vc = self.get_presented_viewcontroller() 
-        actions = [ [_('OK')] ]
-        if onOk is not None and callable(onOk): actions[0].append(onOk)
-        utils.show_alert(
-            vc = vc,
-            title = title,
-            message = message,
-            actions = actions
-        )
+        return self.show_message(message, title, onOk)
+    # can be called from any thread, always runs in main thread
+    def show_message(self, message, title = _("Information"), onOk = None):
+        def func() -> None:
+            vc = self.get_presented_viewcontroller() 
+            actions = [ [_('OK')] ]
+            if onOk is not None and callable(onOk): actions[0].append(onOk)
+            utils.show_alert(
+                vc = vc,
+                title = title,
+                message = message,
+                actions = actions
+            )
+        return utils.do_in_main_thread(func)
 
     def on_pr(self, request):
         #self.payment_request = request
@@ -1036,6 +1043,10 @@ class ElectrumGui(PrintError):
     def prompt_password(prmpt, dummy=0):
         print("prompt_password(%s,%s) thread=%s mainThread?=%s"%(prmpt,str(dummy),NSThread.currentThread.description,str(NSThread.currentThread.isMainThread)))
         return "bchbch"
+    
+    def password_dialog(self, msg) -> str:
+        print("PASSWORD_DIALOG UNIMPLEMTNED. TODO: IMPLEMENT ME!!")
+        return ElectrumGui.prompt_password(msg)
 
     def generate_wallet(self, path):
         with open(path, "wb") as fdesc:
@@ -1078,6 +1089,71 @@ class ElectrumGui(PrintError):
             self.daemon.add_wallet(wallet)
         #print("WALLET=%s synchronizer=%s"%(str(wallet),str(wallet.synchronizer)))
         return wallet
+
+    def sign_tx_with_password(self, tx, callback, password):
+        '''Sign the transaction in a separate thread.  When done, calls
+        the callback with a success code of True or False.
+        '''
+        # call hook to see if plugin needs gui interaction
+        run_hook('sign_tx', self, tx)
+
+        def on_error(exc_info):
+            if not isinstance(exc_info[1], UserCancelled):
+                traceback.print_exception(*exc_info)
+                self.show_error(str(exc_info[1]))
+        def on_signed(result):
+            callback(True)
+        def on_failed(exc_info):
+            on_error(exc_info)
+            callback(False)
+
+        if False:#self.tx_external_keypairs:
+            task = partial(Transaction.sign, tx, self.tx_external_keypairs)
+        else:
+            task = partial(self.wallet.sign_transaction, tx, password)
+        utils.WaitingDialog(self.tabController, _('Signing transaction...'), task,
+                            on_signed, on_failed)
+
+    def broadcast_transaction(self, tx, tx_desc):
+        def broadcast_thread(): # non-GUI thread
+            #pr = self.payment_request
+            #if pr and pr.has_expired():
+            #    self.payment_request = None
+            #    return False, _("Payment request has expired")
+            status, msg =  self.daemon.network.broadcast(tx)
+            #if pr and status is True:
+            #    self.invoices.set_paid(pr, tx.txid())
+            #    self.invoices.save()
+            #    self.payment_request = None
+            #    refund_address = self.wallet.get_receiving_addresses()[0]
+            #    ack_status, ack_msg = pr.send_ack(str(tx), refund_address)
+            #    if ack_status:
+            #        msg = ack_msg
+            return status, msg
+
+        # Capture current TL window; override might be removed on return
+        parent = self#.top_level_window()
+
+        def broadcast_done(result):
+            # GUI thread
+            if result:
+                status, msg = result
+                if status:
+                    if tx_desc is not None and tx.is_complete():
+                        self.wallet.set_label(tx.txid(), tx_desc)
+                    parent.show_message(_('Payment sent.') + '\n' + msg)
+                    #self.invoice_list.update()
+                    self.sendVC.clear()
+                else:
+                    parent.show_error(msg)
+        def on_error(exc_info):
+            if not isinstance(exc_info[1], UserCancelled):
+                traceback.print_exception(*exc_info)
+                self.show_error(str(exc_info[1]))
+
+        utils.WaitingDialog(self.tabController, _('Broadcasting transaction...'),
+                            broadcast_thread, broadcast_done, on_error)
+
 
     # this method is called by Electron Cash libs to start the GUI
     def main(self):

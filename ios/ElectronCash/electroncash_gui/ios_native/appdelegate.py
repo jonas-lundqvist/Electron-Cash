@@ -70,7 +70,7 @@ class PythonAppDelegate(UIResponder):
             eg.start_daemon()
         
         self.firstRun = False
-        
+                
 
     @objc_method
     def applicationDidEnterBackground_(self, application : ObjCInstance) -> None:
