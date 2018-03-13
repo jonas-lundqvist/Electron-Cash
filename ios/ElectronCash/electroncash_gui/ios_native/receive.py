@@ -24,12 +24,25 @@ class ReceiveVC(UIViewController):
         send_super(__class__, self, 'dealloc')
     
     @objc_method
-    def didRotateFromInterfaceOrientation_(self, o : int) -> None:
-        pass
-
-    @objc_method
     def loadView(self) -> None:
         objs = NSBundle.mainBundle.loadNibNamed_owner_options_("Receive",self,None)
         assert objs is not None and len(objs)
-        self.view = objs[0]
-        v = self.view.viewWithTag_(100)
+        for i,o in enumerate(objs):
+            if o.objc_class is UIScrollView:
+                self.view = o
+            elif o.objc_class is UITapGestureRecognizer:
+                o.addTarget_action_(self, SEL('onAddressTap:'))
+                
+        if not self.view:
+            raise Exception("Could not build view -- Receive.xib is missing a UIScrollView as a root object!")
+    
+    @objc_method
+    def viewDidLoad(self) -> None:
+        # do setup...
+        print("viewDidLoad")
+        
+    
+    @objc_method
+    def onAddressTap_(self, uigr : ObjCInstance) -> None:
+        lbl = uigr.view
+        print("UNIMPLEMENTED lbl=%s"%lbl.text)
