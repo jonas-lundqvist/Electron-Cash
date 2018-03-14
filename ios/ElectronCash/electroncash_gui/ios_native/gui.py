@@ -200,6 +200,7 @@ class ElectrumGui(PrintError):
         self.decimal_point = config.get('decimal_point', 5)
         self.fee_unit = config.get('fee_unit', 0)
         self.num_zeros     = self.prefs_get_num_zeros()
+        self.alias_info = None # TODO: IMPLEMENT alias stuff
         
         Address.show_cashaddr(self.prefs_get_use_cashaddr())
 
@@ -951,7 +952,30 @@ class ElectrumGui(PrintError):
         #else:
         #    self.payment_request_error_signal.emit()
         utils.NSLog("On PR: %s -- UNIMPLEMENTED.. IMPLEMENT ME!",str(request))
-        
+    
+    def sign_payment_request(self, addr):
+        ''' No-op for now -- needs to be IMPLEMENTED -- requires the alias functionality '''
+        assert isinstance(addr, Address)
+        alias = self.config.get('alias')
+        alias_privkey = None
+        if alias and self.alias_info:
+            alias_addr, alias_name, validated = self.alias_info
+            if alias_addr:
+                if self.wallet.is_mine(alias_addr):
+                    msg = _('This payment request will be signed.') + '\n' + _('Please enter your password')
+                    password = self.password_dialog(msg)
+                    if password:
+                        try:
+                            self.wallet.sign_payment_request(addr, alias, alias_addr, password)
+                        except Exception as e:
+                            self.show_error(str(e))
+                            return
+                    else:
+                        return
+                else:
+                    return
+
+      
     def show_send_tab(self):
         vcs = self.tabController.viewControllers
         for i,vc in enumerate(vcs):
@@ -987,11 +1011,23 @@ class ElectrumGui(PrintError):
         self.sendVC.onPayTo_message_amount_(address,message,amount)
     
     def refresh_all(self):
-        self.helper.needUpdate()
-        self.historyVC.needUpdate()
-        self.addressesVC.needUpdate()
-        self.prefsVC.refresh()
-        self.receiveVC.refresh()
+        self.refresh_components('*')
+        
+    def refresh_components(self, *args) -> None:
+        if not args: args = ['*']
+        components = set(map(lambda x: str(x).strip().lower(),args))
+        al = {'*','all','world','everything'}
+        if components & {'helper', *al}:
+            self.helper.needUpdate()
+        if components & {'history', *al}:
+            self.historyVC.needUpdate()
+        if components & {'address', 'addresses', *al}:
+            self.addressesVC.needUpdate()
+        if components & {'prefs', 'preferences', 'settings', *al}:
+            self.prefsVC.refresh()
+        if components & {'receive', 'paymentrequests', 'pr', *al}:
+            self.receiveVC.refresh()
+                
 
     def on_new_daemon(self):
         self.daemon.gui = self

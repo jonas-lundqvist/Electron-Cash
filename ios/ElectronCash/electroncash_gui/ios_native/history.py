@@ -62,7 +62,7 @@ class HistoryTableVC(UITableViewController):
 
     @objc_method
     def tableView_cellForRowAtIndexPath_(self, tableView, indexPath):
-        identifier = "%s_%s"%(str(type(self)) , str(indexPath.section))
+        identifier = "%s_%s"%(str(__class__) , str(indexPath.section))
         cell = tableView.dequeueReusableCellWithIdentifier_(identifier)
         if cell is None:
             cell = UITableViewCell.alloc().initWithStyle_reuseIdentifier_(UITableViewCellStyleSubtitle, identifier).autorelease()

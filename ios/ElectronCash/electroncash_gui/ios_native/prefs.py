@@ -137,11 +137,12 @@ class PrefsVC(UITableViewController):
         assert indexPath.section >= 0 and indexPath.section < len(SECTION_TITLES)
         section,row = indexPath.section, indexPath.row
         secName = SECTION_TITLES[section]
-        identifier = "%s_%s_%s"%(str(type(self)) , str(secName), str(row))
+        identifier = "%s_%s_%s"%(str(__class__) , str(secName), str(row))
         cell = tableView.dequeueReusableCellWithIdentifier_(identifier)
         if cell is None:
             cell = self.createCellForSection_row_(secName,row)
-            self.setupCell_section_row_(cell,secName,row)
+            cell.reuseIdentifier = identifier
+        self.setupCell_section_row_(cell,secName,row)
         return cell
 
     @objc_method
@@ -305,10 +306,10 @@ class PrefsVC(UITableViewController):
         b.setTitle_forState_(str(ex), UIControlStateNormal)
         
     @objc_method
-    def createCellForSection_row_(self, secName_oc : ObjCInstance, row : int ) -> ObjCInstance:
+    def createCellForSection_row_(self, secName_oc : ObjCInstance, row : int) -> ObjCInstance:
         secName = py_from_ns(secName_oc)
-        ident = ("%s_%d"%(secName,row))
         cell = None
+        ident = ("%s_%d"%(secName,row))
         
         if ident in ['Fees_1', 'Transactions_0', 'Transactions_1', 'Transactions_2', 'Appearance_0', 'Appearance_1','Fiat_1', 'Fiat_2']:
             objs = NSBundle.mainBundle.loadNibNamed_owner_options_("BoolCell",self.tableView,None)

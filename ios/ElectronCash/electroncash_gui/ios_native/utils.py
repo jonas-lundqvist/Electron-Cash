@@ -110,7 +110,7 @@ def show_alert(vc : ObjCInstance, # the viewcontroller to present the alert view
                 acts.appens([k])
         actions = acts
     ct=0
-    fun_args_dict = {}
+    fun_args_dict = dict()
     for i,arr in enumerate(actions):
         has_callable = False
         fun_args = []
@@ -175,7 +175,7 @@ def call_later(timeout : float, func : Callable, *args) -> ObjCInstance:
 ###
 ### Modal picker stuff
 ###
-pickerCallables = {}
+pickerCallables = dict()
 class UTILSModalPickerHelper(UIViewController):
     
     items = objc_property()
@@ -358,7 +358,7 @@ def NSLog(fmt : str, *args) -> int:
 ####################################################################
 class NSObjCache:
     def __init__(self, maxSize : int = 4, name : str = "Unnamed"):
-        self._cache = {}
+        self._cache = dict()
         maxSize = 4 if type(maxSize) not in [float, int] or maxSize < 1 else int(maxSize)
         self._max = maxSize
         self._name = name
@@ -369,7 +369,7 @@ class NSObjCache:
             for k in self._cache.keys():
                 self._cache[k].release()
                 ct += 1
-            self._cache = {}
+            self._cache = dict()
             if ct: NSLog("Low Memory: Flushed %d objects from '%s' NSObjCache."%(ct,self._name))
      
         self._token = NSNotificationCenter.defaultCenter.addObserverForName_object_queue_usingBlock_(
@@ -456,12 +456,12 @@ def get_qrcode_image_for_data(data : str) -> ObjCInstance:
 # Poor man's signal/slot support
 #   For our limited ObjC objects which can't have Python attributes
 #########################################################################################
-_cb_map = {}
+_cb_map = dict()
 def add_callback(obj : ObjCInstance, name : str, callback : Callable) -> None:
     global _cb_map
     if name is None: raise ValueError("add_callback: name parameter must be not None")
     if callable(callback):
-        m = _cb_map.get(obj.ptr.value, {})
+        m = _cb_map.get(obj.ptr.value, dict())
         m[name] = callback
         _cb_map[obj.ptr.value] = m 
     else:
@@ -489,7 +489,7 @@ def get_callback(obj : ObjCInstance, name : str) -> Callable:
     def dummyCB(*args) -> None:
         pass
     if name is None: raise ValueError("get_callback: name parameter must be not None")
-    return _cb_map.get(obj.ptr.value, {}).get(name, dummyCB)
+    return _cb_map.get(obj.ptr.value, dict()).get(name, dummyCB)
 
 #########################################################
 # TaskThread Stuff
@@ -606,3 +606,38 @@ class WaitingDialog:
         def compl() -> None:
             self.on_finished()
         self.vc.dismissViewControllerAnimated_completion_(True, compl)
+###
+# NS -> py cache since our obj-c objects can't store python attributes :/
+###
+_nspy_dict = dict()
+def nspy_get(ns : ObjCInstance) -> Any:
+    global _nspy_dict
+    return _nspy_dict.get(ns.ptr.value,None)
+def nspy_put(ns : ObjCInstance, py : Any) -> None:
+    global _nspy_dict
+    _nspy_dict[ns.ptr.value] = py
+def nspy_pop(ns : ObjCInstance) -> Any:
+    global _nspy_dict
+    return _nspy_dict.pop(ns.ptr.value,None)
+def nspy_get_byname(ns : ObjCInstance, name : str) -> Any:
+    m = nspy_get(ns)
+    ret = None
+    if isinstance(m, dict):
+        ret = m.get(name,None)
+    return ret
+def nspy_put_byname(ns : ObjCInstance, name : str, py : Any) -> None:
+    m = nspy_get(ns)
+    needPutBack = False
+    if m is None:
+        m = dict()
+        needPutBack = True
+    if isinstance(m, dict):
+        m[name] = py
+    if needPutBack:  nspy_put(ns, m)
+def nspy_pop_byname(ns : ObjCInstance, name : str) -> Any:
+    m = nspy_get_byname(ns, name)
+    ret = None
+    if m and isinstance(m, dict):
+        ret = m.pop(name,None)
+        if not m: nspy_pop(ns) # clean up when dict is empty
+    return ret

@@ -74,7 +74,7 @@ class TxInputsOutputsTVC(NSObject):
     @objc_method
     def tableView_cellForRowAtIndexPath_(self, tv, indexPath):
         #todo: - allow for label editing (popup menu?)
-        identifier = "%s_%s"%(str(type(self)) , str(indexPath.section))
+        identifier = "%s_%s"%(str(__class__) , str(indexPath.section))
         cell = tv.dequeueReusableCellWithIdentifier_(identifier)
         parent = gui.ElectrumGui.gui
         wallet = parent.wallet

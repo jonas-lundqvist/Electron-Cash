@@ -2,16 +2,34 @@ from . import utils
 from . import gui
 from .amountedit import BTCAmountEdit, FiatAmountEdit, BTCkBEdit  # Makes sure ObjC classes are imported into ObjC runtime
 from electroncash import WalletStorage, Wallet
-from electroncash.util import timestamp_to_datetime
+from electroncash.util import timestamp_to_datetime, format_time
 from electroncash.i18n import _, language
 from electroncash.networks import NetworkConstants
 from electroncash.address import Address, ScriptOutput
+from electroncash.paymentrequest import PR_UNPAID, PR_EXPIRED, PR_UNKNOWN, PR_PAID
 from electroncash import bitcoin
 import electroncash.web as web
 import time
 import html
 from .uikit_bindings import *
 from decimal import Decimal
+from collections import namedtuple
+
+pr_icons = {
+    PR_UNPAID:"unpaid.png",
+    PR_PAID:"confirmed.png",
+    PR_EXPIRED:"expired.png"
+}
+
+pr_tooltips = {
+    PR_UNPAID:'Pending',
+    PR_PAID:'Paid',
+    PR_EXPIRED:'Expired'
+}
+
+
+ReqItem = namedtuple("ReqItem", "dateStr addrStr signedBy message amountStr statusStr addr iconSign iconStatus")
+
 
 def parent():
     return gui.ElectrumGui.gui
@@ -60,6 +78,7 @@ class ReceiveVC(UIViewController):
         self.addr = None
         self.view = None
         self.lastQRData = None
+        utils.nspy_pop(self)
         send_super(__class__, self, 'dealloc')
     
     @objc_method
@@ -149,7 +168,6 @@ class ReceiveVC(UIViewController):
     @objc_method
     def refresh(self) -> None:
         if self.ui:
-            self.ui['tv'].reloadData()
             self.viewWillAppear_(False)
 
     @objc_method
@@ -176,8 +194,7 @@ class ReceiveVC(UIViewController):
         if self.addr:
             address = decodeAddress(self.addr)
             if address is not None:
-                ui['addr'].text = address.to_ui_string()
-                self.addr = address.to_ui_string()
+                self.setReceiveAddress_(address.to_ui_string())
             
         self.fxIsEnabled = parent().daemon.fx and parent().daemon.fx.is_enabled()
         utils.uiview_set_enabled(ui['amtFiat'], self.fxIsEnabled)
@@ -185,6 +202,7 @@ class ReceiveVC(UIViewController):
         
         self.redoQR()
         self.updateFXFromAmt()
+        self.updateRequestList()
                    
     @objc_method
     def viewWillDisappear_(self, animated : bool) -> None:
@@ -310,13 +328,17 @@ class ReceiveVC(UIViewController):
         i = self.expiresIdx
         expiration = list(map(lambda x: x[1], self.expiresList))[i]
         if expiration <= 0: expiration = None
-        req = parent().wallet.make_payment_request(decodeAddress(self.addr), amount, message, expiration)
+        theAddr = decodeAddress(self.addr)
+        req = parent().wallet.make_payment_request(theAddr, amount, message, expiration)
         print(req)
-        #parent().wallet.add_payment_request(req, parent().config)
-        #self.sign_payment_request(self.receive_address)
-        #self.request_list.update()
-        #self.address_list.update()
-        #self.save_request_button.setEnabled(False)
+        parent().wallet.add_payment_request(req, parent().config)
+        parent().sign_payment_request(theAddr)
+        parent().wallet.storage.write() # commit it to disk
+        parent().refresh_components('address','receive')
+        # force disable save button
+        utils.uiview_set_enabled(ui['saveBut'],
+                                 (amount is not None) or (message != ""))
+        
 
 
     ## tf delegate methods
@@ -345,11 +367,31 @@ class ReceiveVC(UIViewController):
             
     @objc_method
     def tableView_numberOfRowsInSection_(self, tv : ObjCInstance, section : int) -> int:
-        return 0
+        reqs = utils.nspy_get_byname(self, 'request_list')
+        return len(reqs) if reqs else 0
  
     @objc_method
     def tableView_cellForRowAtIndexPath_(self, tv, indexPath) -> ObjCInstance:
-        return None
+        reqs = utils.nspy_get_byname(self, 'request_list')
+        if not reqs: return None
+        assert indexPath.row >= 0 and indexPath.row < len(reqs)
+        identifier = "%s_%s"%(str(__class__) , str(indexPath.row))
+        cell = tv.dequeueReusableCellWithIdentifier_(identifier)
+        if cell is None:
+            cell = UITableViewCell.alloc().initWithStyle_reuseIdentifier_(UITableViewCellStyleSubtitle, identifier).autorelease()        
+        item = reqs[indexPath.row]
+        #ReqItem = namedtuple("ReqItem", "date addrStr signedBy message amountStr statusStr addr iconSign iconStatus")
+        cell.textLabel.text = ((item.dateStr + " - ") if item.dateStr else "") + (item.message if item.message else "")
+        cell.textLabel.numberOfLines = 1
+        cell.textLabel.lineBreakMode = NSLineBreakByTruncatingMiddle
+        cell.textLabel.adjustsFontSizeToFitWidth = True
+        cell.textLabel.minimumScaleFactor = 0.3
+        cell.detailTextLabel.text = ((item.addrStr + " ") if item.addrStr else "") + (item.amountStr if item.amountStr else "") + " - " + item.statusStr
+        cell.detailTextLabel.numberOfLines = 1
+        cell.detailTextLabel.lineBreakMode = NSLineBreakByTruncatingMiddle
+        cell.detailTextLabel.adjustsFontSizeToFitWidth = True
+        cell.detailTextLabel.minimumScaleFactor = 0.3        
+        return cell
 
     # Below 2 methods conform to UITableViewDelegate protocol
     @objc_method
@@ -360,3 +402,69 @@ class ReceiveVC(UIViewController):
     def tableView_didSelectRowAtIndexPath_(self, tv, indexPath) -> None:
         pass
 
+    @objc_method
+    def setReceiveAddress_(self, adr) -> None:
+        self.ui['addr'].text = adr
+        self.addr = adr
+        
+    @objc_method
+    def updateRequestList(self) -> None:
+        wallet = parent().wallet
+        ui = self.ui
+        if not wallet or not self.addr or not ui: return
+        # hide receive tab if no receive requests available
+        b = len(wallet.receive_requests) > 0
+        #self.setVisible(b)
+        #self.parent.receive_requests_label.setVisible(b)
+        #if not b:
+        #    self.parent.expires_label.hide()
+        #    self.parent.expires_combo.show()
+
+        
+        # update the receive address if necessary
+        current_address = Address.from_string(self.addr)
+        domain = wallet.get_receiving_addresses()
+        addr = wallet.get_unused_address()
+        if not current_address in domain and addr:
+            self.setReceiveAddress_(addr.to_ui_string())
+            current_address = addr.to_ui_string()
+        
+        #TODO:
+        #self.parent.new_request_button.setEnabled(addr != current_address)
+
+        # clear the list and fill it again
+        #self.clear()
+        reqs = []
+        for req in wallet.get_sorted_requests(parent().config):
+            address = req['address']
+            if address not in domain:
+                print("addr not in domain!")
+                continue
+            timestamp = req.get('time', 0)
+            amount = req.get('amount')
+            expiration = req.get('exp', None)
+            message = req.get('memo', '')
+            date = format_time(timestamp)
+            status = req.get('status')
+            signature = req.get('sig')
+            requestor = req.get('name', '')
+            amount_str = parent().format_amount(amount) if amount else ""
+            signedBy = ''
+            iconSign = ''
+            iconStatus = ''
+            #item.setData(0, Qt.UserRole, address)
+            if signature is not None:
+                #item.setIcon(2, QIcon(":icons/seal.png"))
+                #item.setToolTip(2, 'signed by '+ requestor)
+                signedBy = 'signed by ' + requestor
+                iconSign = "seal.png"
+            if status is not PR_UNKNOWN:
+                #item.setIcon(6, QIcon(pr_icons.get(status)))
+                iconStatus = pr_icons.get(status,'')
+            #ReqItem = namedtuple("ReqItem", "dateStr addrStr signedBy message amountStr statusStr addr iconSign iconStatus")
+            item = ReqItem(date, address.to_ui_string(), signedBy, message, amount_str, pr_tooltips.get(status,''), address, iconSign, iconStatus)
+            #self.addTopLevelItem(item)
+            reqs.append(item)
+            #print(item)
+        utils.nspy_put_byname(self,'request_list', reqs) # save it to the global cache since objcinstance lacks the ability to store python objects as attributes :/
+        ui['tv'].reloadData()
