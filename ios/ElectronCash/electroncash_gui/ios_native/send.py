@@ -207,10 +207,11 @@ class SendVC(UIViewController):
 
         # redo amount label if prefs changed
         lbl = self.view.viewWithTag_(200)
-        lbl.text = (_("Amount") + (" ({})")).format(parent.base_unit())
+        tedit = self.view.viewWithTag_(210)
+        lbl.text = (_("Amount") + (" ({})")).format(tedit.baseUnit())
         # Placeholder for amount
         tedit = self.view.viewWithTag_(210)
-        tedit.placeholder = (_("Input amount") + " ({})").format(parent.base_unit())
+        tedit.placeholder = (_("Input amount") + " ({})").format(tedit.baseUnit())
         wasModified = tedit.isModified()
         tedit.setAmount_(self.amountSats) # in case unit changed in prefs
         tedit.modified = wasModified
@@ -271,6 +272,8 @@ class SendVC(UIViewController):
     @objc_method
     def textFieldShouldEndEditing_(self, tf : ObjCInstance) -> bool:
         #print('textFieldShouldEndEditing %d'%tf.tag)
+        if tf.tag in [115,230]:
+            tf.text = tf.text.strip() # strip leading/training spaces in description and address text fields
         if tf.tag in [115]: # the other ones auto-call chkOk anyway.. todo: make addr line edit be a special validating class
             self.chkOk()
         return True

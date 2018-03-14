@@ -192,7 +192,8 @@ class HistoryTableVC(UITableViewController):
     def refresh(self):
         self.updateHistoryFromWallet()
         if self.refreshControl: self.refreshControl.endRefreshing()
-        self.tableView.reloadData()
+        if self.tableView:
+            self.tableView.reloadData()
         self.needsRefresh = False
 
     @objc_method

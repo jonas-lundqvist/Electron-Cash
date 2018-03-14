@@ -5,19 +5,13 @@ from . import utils
 from . import gui
 
 from decimal import Decimal
-from electroncash.util import format_satoshis_plain
+from electroncash.util import format_satoshis_plain, format_satoshis
 
 def parent():
     return gui.ElectrumGui.gui
 
 def config():
     return parent().config
-
-def base_unit():
-    return parent().base_unit()
-
-def decimal_point():
-    return parent().get_decimal_point()
 
 # can use utils.register_callback() for this object.
 # callbacks:
@@ -57,6 +51,14 @@ class BTCAmountEdit(UITextField):
         send_super(__class__, self, 'dealloc')
 
     @objc_method
+    def baseUnit(self) -> ObjCInstance:
+        return ns_from_py(parent().base_unit())
+
+    @objc_method
+    def decimalPoint(self) -> int:
+        return parent().get_decimal_point()
+
+    @objc_method
     def commonInit(self):
         # This seems sufficient for hundred-BTC amounts with 8 decimals
         #self.setFixedWidth(140)
@@ -74,7 +76,7 @@ class BTCAmountEdit(UITextField):
         #self.setReadOnly(b)
         self.userInteractionEnabled = not b
         #self.setFrame(not b)
-        self.alpha = 1.0 if b else 0.75
+        self.alpha = 1.0 if b else 0.3
         utils.get_callback(self, 'frozen')()
         #self.frozen.emit()
         
@@ -97,7 +99,7 @@ class BTCAmountEdit(UITextField):
             if '.' in s:
                 p = s.find('.')
                 s = s.replace('.','')
-                s = s[:p] + '.' + s[p:p+decimal_point()]
+                s = s[:p] + '.' + s[p:p+self.decimalPoint()]
         self.text = s
         utils.get_callback(self, 'textChanged')(self)
         # setText sets Modified to False.  Instead we want to remember
@@ -105,6 +107,10 @@ class BTCAmountEdit(UITextField):
         #self.setModified(self.hasFocus())
         #self.setCursorPosition(pos)
 
+    @objc_method
+    def formatPlain_(self, amount : int) -> ObjCInstance:
+        return ns_from_py(format_satoshis_plain(amount, self.decimalPoint()))
+        #return ns_from_py(format_satoshis(amount, False, parent().num_zeros, self.decimalPoint()))
         
     @objc_method
     def isModified(self) -> bool:
@@ -121,7 +127,7 @@ class BTCAmountEdit(UITextField):
             x = Decimal(str(self.text))
         except:
             return None
-        p = pow(10, decimal_point())
+        p = pow(10, self.decimalPoint())
         return ns_from_py( int( p * x ) ) if x > 0 else None
 
     @objc_method
@@ -130,31 +136,25 @@ class BTCAmountEdit(UITextField):
         if amount is None:
             self.text = ""  # Text(" ") # Space forces repaint in case units changed
         else:
-            self.text = format_satoshis_plain(py_from_ns(amount), decimal_point())
+            self.text = self.formatPlain_(amount) 
         self.numbify()
 
-'''
-class BTCAmountEdit(AmountEdit):
+class FiatAmountEdit(BTCAmountEdit):
+    
+    @objc_method
+    def baseUnit(self) -> ObjCInstance:
+        return ns_from_py(parent().daemon.fx.get_currency() if parent().daemon.fx.is_enabled() else "USD")
+    
+    @objc_method
+    def decimalPoint(self) -> int:
+        return 2  # fiat always has precision of 2
 
-    def __init__(self, decimal_point, is_int = False, parent=None):
-        AmountEdit.__init__(self, self._base_unit, is_int, parent)
-        self.decimal_point = decimal_point
+    @objc_method
+    def formatPlain_(self, amount : int) -> ObjCInstance:
+        return ns_from_py(format_satoshis(amount, False, 2, self.decimalPoint()))
 
-    def _base_unit(self):
-        p = self.decimal_point()
-        assert p in [2, 5, 8]
-        if p == 8:
-            return 'BCH'
-        if p == 5:
-            return 'mBCH'
-        if p == 2:
-            return 'bits'
-        raise Exception('Unknown base unit')
-'''
-
-'''
 class BTCkBEdit(BTCAmountEdit):
     @objc_method
-    def baseUnit(self):
-        return base_unit() + '/kB'
-'''
+    def baseUnit(self) -> ObjCInstance:
+        bu = ObjCInstance(send_super(__class__, self, 'baseUnit'))
+        return ns_from_py(py_from_ns(bu) + '/kB')

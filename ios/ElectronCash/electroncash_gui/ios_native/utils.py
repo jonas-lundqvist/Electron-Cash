@@ -412,9 +412,25 @@ class NSObjCache:
 #############################
 # Shows a QRCode 
 #############################
-_qr_cache = NSObjCache(4,"QR UIImage Cache")
+_qr_cache = NSObjCache(10,"QR UIImage Cache")
 def present_qrcode_vc_for_data(vc : ObjCInstance, data : str, title : str = "QR Code") -> ObjCInstance:
+    uiimage = get_qrcode_image_for_data(data)
+    qvc = UIViewController.new().autorelease()
+    qvc.title = title
+    iv = UIImageView.alloc().initWithImage_(uiimage).autorelease()
+    iv.autoresizeMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight|UIViewAutoresizingFlexibleLeftMargin|UIViewAutoresizingFlexibleRightMargin|UIViewAutoresizingFlexibleTopMargin|UIViewAutoresizingFlexibleBottomMargin
+    iv.contentMode = UIViewContentModeScaleAspectFit
+    iv.opaque = True
+    qvc.view = iv
+    nav = UINavigationController.alloc().initWithRootViewController_(qvc).autorelease()
+    vc.presentViewController_animated_completion_(nav,True,None)
+    return qvc
+
+def get_qrcode_image_for_data(data : str) -> ObjCInstance:
     global _qr_cache
+    if not isinstance(data, (str, bytes)):
+        raise TypeError('argument to get_qrcode_for_data should be of type str or bytes!')
+    if type(data) is bytes: data = data.decode('utf-8')
     uiimage = _qr_cache.get(data)
     if uiimage is None:
         qr = qrcode.QRCode(image_factory=qrcode.image.svg.SvgPathFillImage)
@@ -434,16 +450,7 @@ def present_qrcode_vc_for_data(vc : ObjCInstance, data : str, title : str = "QR 
             None
         )
         _qr_cache.put(data, uiimage)
-    qvc = UIViewController.new().autorelease()
-    qvc.title = title
-    iv = UIImageView.alloc().initWithImage_(uiimage).autorelease()
-    iv.autoresizeMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight|UIViewAutoresizingFlexibleLeftMargin|UIViewAutoresizingFlexibleRightMargin|UIViewAutoresizingFlexibleTopMargin|UIViewAutoresizingFlexibleBottomMargin
-    iv.contentMode = UIViewContentModeScaleAspectFit
-    iv.opaque = True
-    qvc.view = iv
-    nav = UINavigationController.alloc().initWithRootViewController_(qvc).autorelease()
-    vc.presentViewController_animated_completion_(nav,True,None)
-    return qvc
+    return uiimage
 
 #########################################################################################
 # Poor man's signal/slot support

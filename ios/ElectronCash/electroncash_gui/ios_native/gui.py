@@ -991,6 +991,7 @@ class ElectrumGui(PrintError):
         self.historyVC.needUpdate()
         self.addressesVC.needUpdate()
         self.prefsVC.refresh()
+        self.receiveVC.refresh()
 
     def on_new_daemon(self):
         self.daemon.gui = self

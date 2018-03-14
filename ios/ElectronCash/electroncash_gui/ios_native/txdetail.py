@@ -413,6 +413,7 @@ class TxDetail(UIViewController):
     def textFieldShouldReturn_(self, tf) -> bool:
         #print("hit return, value is {}".format(tf.text))
         tx_hash = self.entry[1]
+        tf.text = tf.text.strip()
         new_label = tf.text
         gui.ElectrumGui.gui.on_label_edited(tx_hash, new_label)
         tf.resignFirstResponder()

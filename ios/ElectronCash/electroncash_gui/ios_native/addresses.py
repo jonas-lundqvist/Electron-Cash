@@ -180,7 +180,8 @@ class AddressesTableVC(UITableViewController):
     def refresh(self):
         self.updateAddressesFromWallet()
         if self.refreshControl: self.refreshControl.endRefreshing()
-        self.tableView.reloadData()
+        if self.tableView: 
+            self.tableView.reloadData()
         self.needsRefresh = False
 
     @objc_method
