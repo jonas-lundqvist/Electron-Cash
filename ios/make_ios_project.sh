@@ -1,6 +1,6 @@
 #!/bin/bash
 
-/usr/bin/env python3 --version | grep -q " 3.6"
+/usr/bin/env python3 --version | grep -q " 3.5"
 if [ "$?" != "0" ]; then
 	if /usr/bin/env python3 --version; then
 		echo "WARNING:: Creating the Briefcase-based Xcode project for iOS requires Python 3.5."
