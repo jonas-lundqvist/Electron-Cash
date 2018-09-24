@@ -270,7 +270,7 @@ class PaymentRequest:
         paymnt.transactions.append(bfh(raw_tx))
         ref_out = paymnt.refund_to.add()
         ref_out.script = bfh(transaction.Transaction.pay_script(refund_addr))
-        paymnt.memo = "Paid using Electrum"
+        paymnt.memo = "Paid using Electron Cash"
         pm = paymnt.SerializeToString()
         payurl = urllib.parse.urlparse(pay_det.payment_url)
         try:
