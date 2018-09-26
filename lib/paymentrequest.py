@@ -282,7 +282,7 @@ class PaymentRequest:
             except Exception as e:
                 print(e)
                 return False, "Payment Message/PaymentACK Failed"
-        if r.status_code >= 500:
+        if r.status_code != 200:
             return False, r.reason
         try:
             paymntack = pb2.PaymentACK()
