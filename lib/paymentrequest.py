@@ -261,7 +261,7 @@ class PaymentRequest:
     def get_outputs(self):
         return self.outputs[:]
 
-    def send_ack(self, raw_tx, refund_addr):
+    def send_payment(self, raw_tx, refund_addr):
         pay_det = self.details
         if not self.details.payment_url:
             return False, "no url"

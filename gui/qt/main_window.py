@@ -1590,7 +1590,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
                 self.invoices.save()
                 self.payment_request = None
                 refund_address = self.wallet.get_receiving_addresses()[0]
-                ack_status, ack_msg = pr.send_ack(str(tx), refund_address)
+                ack_status, ack_msg = pr.send_payment(str(tx), refund_address)
                 msg = ack_msg
                 if ack_status:
                     status = True
