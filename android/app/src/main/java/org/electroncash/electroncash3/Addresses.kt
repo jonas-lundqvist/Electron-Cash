@@ -124,7 +124,7 @@ class AddressDialog() : MenuDialog() {
             R.id.menuCopy -> {
                 copyToClipboard(
                     if (clsAddress["FMT_UI"] == clsAddress["FMT_LEGACY"]) address
-                    else clsNetworks["CASHADDR_PREFIX"].toString()+ ":" + address)
+                    else clsNetworks["CASHADDR_PREFIX"].toString() + ":" + address)
             }
             R.id.menuExplorer -> exploreAddress(activity!!, address)
             else -> throw Exception("Unknown item $item")

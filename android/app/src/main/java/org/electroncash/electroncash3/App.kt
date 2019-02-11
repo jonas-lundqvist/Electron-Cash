@@ -39,7 +39,7 @@ class App : Application() {
                                     NotificationManager.IMPORTANCE_DEFAULT))
         }
 
-        if(BuildConfig.testnet) {
+        if (BuildConfig.testnet) {
             libNetworks.callAttr("set_testnet")
         }
 
