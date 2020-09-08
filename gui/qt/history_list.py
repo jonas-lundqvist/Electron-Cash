@@ -184,11 +184,18 @@ class HistoryList(MyTreeWidget):
             return
         root = self.invisibleRootItem()
         child_count = root.childCount()
+        filtered_list = []
         for i in range(child_count):
             item = root.child(i)
             txid = item.data(0, Qt.UserRole)
             label = self.wallet.get_label(txid)
             item.setText(3, label)
+            filtered = run_hook("history_list_filter", self, item, label, multi=True) or []
+            if any(filtered):
+                filtered_list.append(item)
+
+        for item in filtered_list:
+            root.removeChild(item)
 
     def update_item(self, tx_hash, height, conf, timestamp):
         if not self.wallet: return # can happen on startup if this is called before self.on_update()
