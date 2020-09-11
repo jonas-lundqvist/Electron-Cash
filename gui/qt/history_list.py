@@ -61,6 +61,7 @@ class HistoryList(MyTreeWidget):
         self.withdrawalBrush = QBrush(QColor("#BC1E1E"))
         self.invoiceIcon = QIcon(":icons/seal")
         self._item_cache = Weak.ValueDictionary()
+        self.itemChanged.connect(self.item_changed)
 
         self.has_unknown_balances = False
 
@@ -184,18 +185,33 @@ class HistoryList(MyTreeWidget):
             return
         root = self.invisibleRootItem()
         child_count = root.childCount()
-        filtered_list = []
         for i in range(child_count):
             item = root.child(i)
             txid = item.data(0, Qt.UserRole)
-            label = self.wallet.get_label(txid)
-            item.setText(3, label)
-            filtered = run_hook("history_list_filter", self, item, label, multi=True) or []
-            if any(filtered):
-                filtered_list.append(item)
+            h_label = self.wallet.get_label(txid)
+            current_label = item.data(3, Qt.EditRole)
+            item.setText(3, h_label)
+            if (current_label != h_label):
+                self.item_changed(item, 3)
 
-        for item in filtered_list:
-            root.removeChild(item)
+    def item_changed(self, item, column):
+        # Run the label of the changed item thru the filter hook
+        if column != 3:
+            return
+
+        h_items = self.wallet.get_history(self.get_domain(), reverse=True)
+        item_txid = item.data(0, Qt.UserRole)
+
+        # Find the corresponding item in the wallet history
+        for h_item in h_items:
+             tx_hash, _, _, _, _, _ = h_item
+
+             if tx_hash == item_txid:
+                label = item.data(3, Qt.EditRole)
+                should_skip = run_hook("history_list_filter", self, h_item, label, multi=True) or []
+                if any(should_skip):
+                    item.setHidden(True)
+                return
 
     def update_item(self, tx_hash, height, conf, timestamp):
         if not self.wallet: return # can happen on startup if this is called before self.on_update()
