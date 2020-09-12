@@ -189,9 +189,9 @@ class HistoryList(MyTreeWidget):
             item = root.child(i)
             txid = item.data(0, Qt.UserRole)
             h_label = self.wallet.get_label(txid)
-            current_label = item.data(3, Qt.EditRole)
+            current_label = item.text(3)
             item.setText(3, h_label)
-            if (current_label != h_label):
+            if current_label != h_label:
                 self.item_changed(item, 3)
 
     def item_changed(self, item, column):
@@ -199,7 +199,7 @@ class HistoryList(MyTreeWidget):
         if column != 3:
             return
 
-        label = item.data(3, Qt.EditRole)
+        label = item.text(3)
         # NB: 'h_item' parameter is None due to performance reasons
         should_skip = run_hook("history_list_filter", self, None, label, multi=True) or []
         if any(should_skip):
