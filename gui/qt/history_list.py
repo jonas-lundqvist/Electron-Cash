@@ -199,19 +199,11 @@ class HistoryList(MyTreeWidget):
         if column != 3:
             return
 
-        h_items = self.wallet.get_history(self.get_domain(), reverse=True)
-        item_txid = item.data(0, Qt.UserRole)
-
-        # Find the corresponding item in the wallet history
-        for h_item in h_items:
-             tx_hash, _, _, _, _, _ = h_item
-
-             if tx_hash == item_txid:
-                label = item.data(3, Qt.EditRole)
-                should_skip = run_hook("history_list_filter", self, h_item, label, multi=True) or []
-                if any(should_skip):
-                    item.setHidden(True)
-                return
+        label = item.data(3, Qt.EditRole)
+        # NB: 'h_item' parameter is None due to performance reasons
+        should_skip = run_hook("history_list_filter", self, None, label, multi=True) or []
+        if any(should_skip):
+            item.setHidden(True)
 
     def update_item(self, tx_hash, height, conf, timestamp):
         if not self.wallet: return # can happen on startup if this is called before self.on_update()
