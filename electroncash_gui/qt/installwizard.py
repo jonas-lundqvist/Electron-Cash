@@ -670,17 +670,18 @@ class DerivationPathScanner(QThread):
             keys = k.dump()
             tmp_storage.put('keystore', keys)
             wallet = Standard_Wallet(tmp_storage)
-            network = Network(self.parent.config)
-            network.start()
-            wallet.start_threads(network)
-            wallet.synchronize()
-            wallet.wait_until_synchronized()
-            while network.is_connecting():
-                time.sleep(0.1)
-
-            num_tx = len(wallet.get_history())
-            wallet.clear_history()
-            self.progress_cb(i, str(num_tx))
+            network = Network.get_instance()
+            if network:
+                wallet.start_threads(network)
+                wallet.synchronize()
+                wallet.wait_until_synchronized()
+                while network.is_connecting():
+                    time.sleep(0.1)
+                num_tx = len(wallet.get_history())
+                wallet.clear_history()
+                self.progress_cb(i, str(num_tx))
+            else:
+                self.progress_cb(i, _('Offline'))
 
 class DerivationDialog(QDialog):
     def __init__(self, parent, seed, paths):
