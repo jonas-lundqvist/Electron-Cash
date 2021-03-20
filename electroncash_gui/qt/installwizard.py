@@ -648,21 +648,27 @@ class DerivationPathScanner(QThread):
         "m/44'/145'/0'/0",
         "m/44'/245'/0"]
 
-    def __init__(self, parent, seed, progress_cb):
+    def __init__(self, parent, seed, update_table_cb):
         QThread.__init__(self, parent)
-        self.progress_cb = progress_cb
+        self.update_table_cb = update_table_cb
         self.parent = parent
         self.seed = seed
         self.aborting = False
 
     def run(self):
+        from electroncash.network import Network
+        network = Network.get_instance()
+        if not network:
+            for i, p in enumerate(self.DERIVATION_PATHS):
+                self.update_table_cb(i, _('Offline'))
+            return
+
         for i, p in enumerate(self.DERIVATION_PATHS):
             if self.aborting:
                 return
             from electroncash import keystore
             from electroncash.wallet import Standard_Wallet
             from electroncash.storage import WalletStorage
-            from electroncash.network import Network
             k = keystore.from_seed(self.seed, '', derivation=p, seed_type=self.parent.seed_type)
             storage_path = self.parent.config.get_wallet_path() + "_not_saved_on_disk"
             tmp_storage = WalletStorage(storage_path, in_memory_only=True)
@@ -670,20 +676,17 @@ class DerivationPathScanner(QThread):
             keys = k.dump()
             tmp_storage.put('keystore', keys)
             wallet = Standard_Wallet(tmp_storage)
-            network = Network.get_instance()
-            if network:
-                wallet.start_threads(network)
-                wallet.synchronize()
-                wallet.wait_until_synchronized()
-                while network.is_connecting():
-                    time.sleep(0.1)
-                num_tx = len(wallet.get_history())
-                wallet.clear_history()
-                self.progress_cb(i, str(num_tx))
-            else:
-                self.progress_cb(i, _('Offline'))
+            wallet.start_threads(network)
+            wallet.synchronize()
+            wallet.wait_until_synchronized()
+            while network.is_connecting():
+                time.sleep(0.1)
+            num_tx = len(wallet.get_history())
+            wallet.clear_history()
+            self.update_table_cb(i, str(num_tx))
 
 class DerivationDialog(QDialog):
+    scan_result_signal = pyqtSignal(object, object)
     def __init__(self, parent, seed, paths):
         QDialog.__init__(self, parent)
 
@@ -721,8 +724,12 @@ class DerivationDialog(QDialog):
         vbox.addLayout(buts)
         vbox.addStretch(1)
         ok_but.setEnabled(True)
-        self.t = DerivationPathScanner(parent, seed, self.update_table)
+        self.scan_result_signal.connect(self.update_table)
+        self.t = DerivationPathScanner(parent, seed, self.update_table_cb)
         self.t.start()
+
+    def update_table_cb(self, row, scan_result):
+        self.scan_result_signal.emit(row, scan_result)
 
     def update_table(self, row, scan_result):
         self.table.item(row, 1).setText(scan_result)
