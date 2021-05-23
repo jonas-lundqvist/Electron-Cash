@@ -9,6 +9,7 @@ from time import time
 
 from electroncash import commands, daemon, interface, keystore, storage, util
 from electroncash.i18n import _
+from electroncash.plugins import Plugins, run_hook
 from electroncash.storage import WalletStorage
 from electroncash.wallet import (ImportedAddressWallet, ImportedPrivkeyWallet, Standard_Wallet,
                                  Wallet)
@@ -80,7 +81,8 @@ class AndroidCommands(commands.Commands):
 
         # Create daemon here rather than in start() so the DaemonModel has a chance to register
         # its callback before the daemon threads start.
-        self.daemon = daemon.Daemon(self.config, fd, is_gui=False, plugins=None)
+        plugins = Plugins(config, "android")
+        self.daemon = daemon.Daemon(self.config, fd, is_gui=False, plugins=plugins)
         self.daemon_running = False
 
         self.gui_callback = None
@@ -128,11 +130,14 @@ class AndroidCommands(commands.Commands):
             wallet = Wallet(storage)
             wallet.start_threads(self.network)
             self.daemon.add_wallet(wallet)
+            run_hook('start_android_wallet', wallet)
 
     def close_wallet(self, name=None):
         """Close a wallet"""
+        path = self._wallet_path(name)
+        run_hook('stop_android_wallet', self.daemon.get_wallet(path))
         self._assert_daemon_running()
-        self.daemon.stop_wallet(self._wallet_path(name))
+        self.daemon.stop_wallet(path)
 
     def create(self, name, password, seed=None, passphrase="", bip39_derivation=None,
                master=None, addresses=None, privkeys=None):
