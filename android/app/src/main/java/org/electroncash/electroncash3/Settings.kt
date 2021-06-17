@@ -30,9 +30,7 @@ fun initSettings(): PyObject {
     settings.getBoolean("cashaddr_format").observeForever {
         clsAddress.callAttr("show_cashaddr", it)
     }
-    settings.getBoolean("synchronize_labels").observeForever {
-        settings.getBoolean("use_labels").setValue(it)
-    }
+
     settings.getString("base_unit").observeForever {
         unitName = it!!
         val places = libUtil.get("base_units")!!.callAttr("get", it)
