@@ -39,6 +39,10 @@ class AndroidConsole(InteractiveConsole):
         except SystemExit:
             pass
 
+class AndroidWindow:
+    def __init__(self):
+        self.wallet = None
+
 
 class CommandWrapper:
     def __init__(self, cmds, name):
@@ -85,6 +89,7 @@ class AndroidCommands(commands.Commands):
         self.daemon = daemon.Daemon(self.config, fd, is_gui=False, plugins=plugins)
         self.daemon_running = False
 
+        self.window = AndroidWindow() # For plugin callbacks
         self.gui_callback = None
         self.network = self.daemon.network
         self.network.register_callback(self._on_callback, CALLBACKS)
@@ -130,12 +135,13 @@ class AndroidCommands(commands.Commands):
             wallet = Wallet(storage)
             wallet.start_threads(self.network)
             self.daemon.add_wallet(wallet)
-            run_hook('start_android_wallet', wallet)
+            self.window.wallet = wallet
+            run_hook('on_new_window', self.window)
 
     def close_wallet(self, name=None):
         """Close a wallet"""
         path = self._wallet_path(name)
-        run_hook('stop_android_wallet', self.daemon.get_wallet(path))
+        run_hook('on_close_window', self.window)
         self._assert_daemon_running()
         self.daemon.stop_wallet(path)
 

@@ -7,9 +7,9 @@ class Plugin(LabelsPlugin):
         LabelsPlugin.__init__(self, *args)
 
     @hook
-    def start_android_wallet(self, wallet):
-        self.start_wallet(wallet)
+    def on_new_window(self, window):
+        self.start_wallet(window.wallet)
 
     @hook
-    def stop_android_wallet(self, wallet):
-        self.stop_wallet(wallet)
+    def on_close_window(self, window):
+        self.stop_wallet(window.wallet)
