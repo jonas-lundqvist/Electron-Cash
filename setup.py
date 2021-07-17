@@ -183,6 +183,7 @@ setup(
             'servers_testnet.json',
             'servers_testnet4.json',
             'servers_scalenet.json',
+            'servers_regtest.json',
             'servers_taxcoin.json',
             'currencies.json',
             'www/index.html',

@@ -48,7 +48,7 @@ def bits_to_target(bits):
     if bits == 0:
         return 0
     size = bits >> 24
-    assert size <= 0x1d
+    # assert size <= 0x1d # FIXME: this seems to be not working for regtest
 
     word = bits & 0x00ffffff
     assert 0x8000 <= word <= 0x7fffff
@@ -79,6 +79,7 @@ def target_to_bits(target):
 HEADER_SIZE = 80 # bytes
 MAX_BITS = 0x1d00ffff
 MAX_TARGET = bits_to_target(MAX_BITS)
+MAX_BITS_REGTEST = 0x207fffff # FIXME: if it is always constant, move to network constants
 # indicates no header in data file
 NULL_HEADER = bytes([0]) * HEADER_SIZE
 NULL_HASH_BYTES = bytes([0]) * 32
@@ -479,7 +480,8 @@ class Blockchain(util.PrintError):
 
 
         # ASERTi3-2d DAA activated on Nov. 15th 2020 HF
-        if daa_mtp >= networks.net.asert_daa.MTP_ACTIVATION_TIME:
+        # on regtest it is disabled as documented in BCHN code
+        if daa_mtp >= networks.net.asert_daa.MTP_ACTIVATION_TIME and not networks.net.REGTEST:
             header_ts = header['timestamp']
             prev_ts = prior['timestamp']
             if networks.net.TESTNET:
@@ -542,6 +544,8 @@ class Blockchain(util.PrintError):
                 return MAX_BITS
             # special case for a newly started testnet (such as testnet4)
             if height < N_BLOCKS:
+                if networks.net.REGTEST:
+                    return MAX_BITS_REGTEST
                 return MAX_BITS
             return self.read_header(height // N_BLOCKS * N_BLOCKS, chunk)['bits']
 

@@ -1001,6 +1001,7 @@ def add_global_options(parser):
     group.add_argument("--testnet", action="store_true", dest="testnet", default=False, help="Use Testnet")
     group.add_argument("--testnet4", action="store_true", dest="testnet4", default=False, help="Use Testnet4")
     group.add_argument("--scalenet", action="store_true", dest="scalenet", default=False, help="Use Scalenet")
+    group.add_argument("--regtest", action="store_true", dest="regtest", default=False, help="Use Regtest")
     group.add_argument("--taxcoin", action="store_true", dest="taxcoin", default=False, help="Use TaxCoin (ABC)")
 
 def get_parser():
