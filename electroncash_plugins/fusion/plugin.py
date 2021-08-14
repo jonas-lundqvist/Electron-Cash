@@ -607,13 +607,11 @@ class FusionPlugin(BasePlugin):
                     sum_eligible_values = 0
                     sum_fuz_values = 0
                     for (eaddr, ecoins) in eligible:
-                        ecoins_value = 0
-                        for ecoin in ecoins:
-                            ecoins_value += ecoin['value']
+                        ecoins_value = sum(ecoin['value'] for ecoin in ecoins)
                         sum_eligible_values += ecoins_value
                         if self.is_fuz_address(wallet, eaddr, fuse_depth - 1):
                             sum_fuz_values += ecoins_value
-                    if sum_eligible_values != 0 and float(sum_fuz_values / sum_eligible_values) >= FUSE_DEPTH_THRESHOLD:
+                    if sum_eligible_values != 0 and sum_fuz_values / sum_eligible_values >= FUSE_DEPTH_THRESHOLD:
                         continue
 
                 if not dont_start_fusions and num_auto < min(target_num_auto, MAX_AUTOFUSIONS_PER_WALLET):
@@ -692,6 +690,8 @@ class FusionPlugin(BasePlugin):
             # check cache, if cache hit, return answer and avoid the lookup below
             return answer
 
+        fuz_parents = min(fuz_parents, 900)  # paranoia: clamp recursion to 900
+
         def check_is_fuz_tx():
             tx = wallet.transactions.get(tx_id, None)
             if tx is not None:
@@ -713,12 +713,12 @@ class FusionPlugin(BasePlugin):
                     if inp_addr is not None and wallet.is_mine(inp_addr):
                         fuz_input_found = True
                         if fuz_parents <= 0:
-                            return True # This transaction is a CashFusion tx
+                            return True  # This transaction is a CashFusion tx
                         # [Optional] Step 3 - Check if all inputs from the wallet are also fusions
                         if not FusionPlugin.is_fuz_coin(wallet, inp, fuz_parents - 1):
-                            return False # Not all parents were CashFusion transactions
+                            return False  # Not all parents were CashFusion transactions
                 if fuz_input_found:
-                    return True # All parents where CashFusion transactions with sufficient depth
+                    return True  # All parents where CashFusion transactions with sufficient depth
                 # Failure -- this tx has the lokad but no inputs are "from me".
                 print_error(f"CashFusion: txid \"{tx_id}\" has a CashFusion-style OP_RETURN but none of the "
                             "inputs are from this wallet. This is UNEXPECTED!")

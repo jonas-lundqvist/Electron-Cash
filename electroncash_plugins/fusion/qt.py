@@ -1351,7 +1351,7 @@ class WalletSettingsDialog(WindowModalDialog):
         numstop = self.sb_fuse_depth.value()
         self.conf.fuse_depth = numstop
         with self.wallet.lock:
-            self.wallet._cashfusion_address_cache = set() # The cache is calculated with old depth
+            self.wallet._cashfusion_address_cache = set()  # The cache is calculated with old depth
             self.wallet._cashfusion_is_fuz_coin_cache = dict()
         if prevval == 0 or (prevval > numstop and numstop != 0):
             for f in list(self.wallet._fusions_auto):

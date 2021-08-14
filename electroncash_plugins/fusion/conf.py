@@ -46,7 +46,7 @@ class Conf:
         CoinbaseSeenLatch = False
         FusionMode = 'normal'
         QueudAutofuse = 4
-        FuseDepth = 0 # Fuse forever by default
+        FuseDepth = 0  # Fuse forever by default
         Selector = ('fraction', 0.1)  # coin selector options
         SelfFusePlayers = 1 # self-fusing control (1 = just self, more than 1 = self fuse up to N times)
         SpendOnlyFusedCoins = False  # spendable_coin_filter @hook
