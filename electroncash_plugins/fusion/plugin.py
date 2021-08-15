@@ -606,7 +606,7 @@ class FusionPlugin(BasePlugin):
                 if fuse_depth > 0:
                     sum_eligible_values = 0
                     sum_fuz_values = 0
-                    for (eaddr, ecoins) in eligible:
+                    for eaddr, ecoins in eligible:
                         ecoins_value = sum(ecoin['value'] for ecoin in ecoins)
                         sum_eligible_values += ecoins_value
                         if self.is_fuz_address(wallet, eaddr, fuse_depth - 1):
