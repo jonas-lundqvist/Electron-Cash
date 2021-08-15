@@ -743,7 +743,7 @@ class FusionPlugin(BasePlugin):
         return answer
 
     @classmethod
-    def is_fuz_address(cls, wallet, address, fuz_parents = 0):
+    def is_fuz_address(cls, wallet, address, fuz_parents=0):
         """ Returns True if address contains any fused UTXOs.
             If you want thread safety, caller must hold wallet locks. """
         assert isinstance(address, Address)
