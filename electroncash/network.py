@@ -305,6 +305,7 @@ class Network(util.DaemonThread):
         self.connecting = set()
         self.requested_chunks = set()
         self.socket_queue = queue.Queue()
+        self.dsp_subscriptions = []
         if Network.INSTANCE:
             # This happens on iOS which kills and restarts the daemon on app sleep/wake
             self.print_error("A new instance has started and is replacing the old one.")
@@ -935,10 +936,16 @@ class Network(util.DaemonThread):
         self.send(msgs, callback)
 
     def subscribe_to_dsproof(self, txid, callback):
+        if txid in self.dsp_subscriptions:
+            return
+        self.dsp_subscriptions.append(txid)
         msg = [[('blockchain.transaction.dsproof.subscribe'), [txid]]]
         self.send(msg, callback)
 
     def unsubscribe_to_dsproof(self, txid, callback):
+        if txid not in self.dsp_subscriptions:
+            return
+        self.dsp_subscriptions.remove(txid)
         msg = [[('blockchain.transaction.dsproof.unsubscribe'), [txid]]]
         self.send(msg, callback)
 

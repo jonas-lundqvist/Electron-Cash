@@ -128,7 +128,7 @@ class Synchronizer(ThreadJob):
         history = self.wallet.get_address_history(addr)
 
         for tx_hash, tx_height in history:
-            if tx_height <= 0 and not self.wallet.is_dsp_detected(tx_hash):
+            if tx_height <= 0 and tx_hash not in self.network.dsp_subscriptions:
                 # There was one unconfirmed tx when the wallet opened
                 self.network.subscribe_to_dsproof(tx_hash, self.dsproof_callback)
 
@@ -172,10 +172,11 @@ class Synchronizer(ThreadJob):
         else:
             for tx_hash, tx_height in hist:
                 if tx_height > 0:
-                    if self.wallet.remove_detected_dsproof(tx_hash):
+                    if tx_hash in self.network.dsp_subscriptions:
+                        self.wallet.remove_detected_dsproof(tx_hash)
                         self.network.unsubscribe_to_dsproof(tx_hash, [])
                 else:
-                    if self.network.force_dsproof and not self.wallet.is_dsp_detected(tx_hash):
+                    if self.network.force_dsproof and tx_hash not in self.network.dsp_subscriptions:
                         self.network.subscribe_to_dsproof(tx_hash, self.dsproof_callback)
             # Store received history
             self.wallet.receive_history_callback(addr, hist, tx_fees)
