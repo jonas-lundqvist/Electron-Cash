@@ -4664,7 +4664,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
 
     def clean_up_connections(self):
         def disconnect_signals():
-            del self.cashaddr_format_changed_signal  # delete alias so it doesn interfere with below
+            del self.cashaddr_toggled_signal  # delete alias so it doesn interfere with below
             for attr_name in dir(self):
                 if attr_name.endswith("_signal"):
                     sig = getattr(self, attr_name)
