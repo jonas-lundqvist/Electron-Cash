@@ -18,7 +18,7 @@ Roger Taylor - new version 1.4 blockchain synch code, external plugin system, mi
 Mark Lundeberg - Windows zbar, SLP (Tokens) work, cryptography, CashShuffle, miscellaneous
 James Cramer - Simple Ledger Protocol (Tokens)
 Jochen Hoenicke - Trezor, Ledger, and other miscellaneous fixes
-Jonas Lundqvist - BIP70 fix, currency exchanges, Android
+Jonas Lundqvist - BIP70 fix, currency exchanges, Android, stuff
 Marcel O'Neil - Miscellaneous + packaging fixups
 Clifford - CashShuffle
 imaginaryusername - UI and privacy recommendations
