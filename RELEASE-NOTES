@@ -1336,3 +1336,7 @@ and there is no warning message.
 - Android: Bump chaquopy to 13.0.0 #2500 (Jonas Lundqvist)
 - Removal of RPA from the GUI and from payment request handling
   #2503 (Jonald Fyookball)
+
+# RELEASE NOTES 4.2.13
+
+- Nothing
