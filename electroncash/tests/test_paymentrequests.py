@@ -151,7 +151,6 @@ class DummyServer:
         self.httpd.shutdown()
         self.httpd.server_close()
 
-@staticmethod
 def _signed_response() -> Response:
     payment_req_data = {
         'time': '2020-01-24T18:57:44.509Z',
