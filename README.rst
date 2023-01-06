@@ -27,7 +27,7 @@ Electron Cash - Lightweight Bitcoin Cash client
 Getting started
 ===============
 
-**Note: If running from source, Python 3.6 or above is required to run Electron Cash.** If your system lacks Python 3.6,
+**Note: If running from source, Python 3.7 or above is required to run Electron Cash.** If your system lacks Python 3.6,
 you have other options, such as the `AppImage / binary releases <https://github.com/Electron-Cash/Electron-Cash/releases/>`_
 or running from source using `pyenv` (see section `Running from source on old Linux`_ below).
 
