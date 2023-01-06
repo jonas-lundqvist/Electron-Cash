@@ -19,11 +19,9 @@ jobs:
           token: ${{ secrets.TELEGRAM_TOKEN }}
           message: |
             ${{ github.actor }} created PR:
-            Path: ${{ GITHUB_EVENT_NAME}}
-            Path: ${{ GITHUB_EVENT_PATH }}
-            Ref: ${{ GITHUB_REF }}
+            Path: ${{ github.event.name}}
+            Path: ${{ github.event.path }}
+            Ref: ${{ github,ref }}
             Commit message: ${{ github.event.commits[0].message }}
-            
             Repository: ${{ github.repository }}
-            
             See changes: https://github.com/${{ github.repository }}/commit/${{github.sha}}
