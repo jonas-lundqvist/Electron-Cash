@@ -1,0 +1,27 @@
+name: Telegram Notifications
+
+on:
+  pull_request:
+    types: [opened, closed]
+    branches: [master]
+  issues:
+    types: [opened, closed]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Telegram Notification
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          format: markdown
+          message: |
+            ${{ github.event.action == 'opened' && '🟢' || '🔴' }} *${{ github.actor }}* ${{ github.event.action }} ${{ github.event_name == 'pull_request' && 'Pull Request' || 'Issue' }} #${{ github.event.pull_request.number || github.event.issue.number }}
+
+            📋 *Title:* ${{ github.event.pull_request.title || github.event.issue.title }}
+
+            🏷️ *Repository:* ${{ github.repository }}
+
+            🔗 [View on GitHub](${{ github.event.pull_request.html_url || github.event.issue.html_url }})
