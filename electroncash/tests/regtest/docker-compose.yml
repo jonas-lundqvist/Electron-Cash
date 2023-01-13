@@ -1,7 +1,7 @@
 version: "3"
 services:
   bitcoind:
-    image: zquestz/bitcoin-cash-node@sha256:5d3a35a5a0a925c989a5510e71a67d8f9961a2ae3449706a2ec49c51525b7033
+    image: zquestz/bitcoin-cash-node:26.0.0
     command: "bitcoind -conf=/conf/bitcoind.conf"
     volumes:
       - conf-files:/conf
@@ -10,7 +10,7 @@ services:
     ports:
       - 18333:18334
   fulcrum:
-    image: cculianu/fulcrum@sha256:585e5aa21b67e5ed0ad581189657a7efb98698579d9a97f7e4ff1c014008488b
+    image: cculianu/fulcrum:v1.9.0
     command: "Fulcrum /conf/fulcrum.conf"
     networks:
      - bitcoin
