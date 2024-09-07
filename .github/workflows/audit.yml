@@ -19,10 +19,9 @@ jobs:
           contrib/deterministic-build/requirements-build-wine.txt
           contrib/deterministic-build/requirements-hw.txt
           contrib/deterministic-build/requirements-pip.txt
-          contrib/deterministic-build/requirements.txt
-          | grep -v btchip-python > requirements.txt
+          contrib/deterministic-build/requirements.txt > requirements.txt
       - name: Run Audit
-        uses: pypa/gh-action-pip-audit@v1.0.8
+        uses: pypa/gh-action-pip-audit@v1.1.0
         with:
           inputs: requirements.txt
           # PYSEC-2022-43012, PYSEC-2022-43017 and PYSEC-2023-228 are only at build time
