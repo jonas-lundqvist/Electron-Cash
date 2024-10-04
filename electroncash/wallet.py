@@ -3848,7 +3848,6 @@ class Abstract_Wallet(PrintError, SPVDelegate):
             tx_hash, height, _, _, _, _, _, _ = h_item
             if height < 1:
                 self.subscribe_to_dsp([(tx_hash, height)])
-                break
         self.network.trigger_callback('wallet_updated', self)            
 
 class Simple_Wallet(Abstract_Wallet):
