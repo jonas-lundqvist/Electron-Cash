@@ -246,6 +246,8 @@ class Synchronizer(ThreadJob):
         if not addr:
             return  # Bad server response?
         history = self.wallet.get_address_history(addr)
+        self.wallet.subscribe_to_dsp(history)
+
         if self.get_status(history) != result:
             if self.requested_histories.get(scripthash) is None:
                 self.requested_histories[scripthash] = result
@@ -281,6 +283,8 @@ class Synchronizer(ThreadJob):
         elif self.get_status(hist) != server_status:
             self.print_error("error: status mismatch: {}".format(addr))
         else:
+            self.wallet.subscribe_to_dsp(hist)
+
             # Store received history
             self.wallet.receive_history_callback(addr, hist, tx_fees)
             # Request transactions we don't have
@@ -338,6 +342,24 @@ class Synchronizer(ThreadJob):
 
         # wallet balance updated for this sh, check if it is a candidate for purge
         self._check_change_scripthash(scripthash)
+
+    def dsproof_callback(self, response):
+        _, result, error = self._parse_response(response)
+
+        if error:
+            return
+
+        if 'params' in response and len(response['params']) == 2:
+            _, result = response['params']
+
+        if result is None:
+            return
+
+        if 'descendants' in result:
+            txids = [s for s in result['descendants'] if not self.wallet.is_dsp_detected(s)]
+            if txids:
+                self.wallet.add_detected_dsproofs(txids)
+                self.network.trigger_callback('new_dsproof', self.wallet, result)
 
     def _request_missing_txs(self, hist: Iterable[Tuple[str, int]], scripthash: Optional[str]) -> bool:
         # "hist" is a list of [tx_hash, tx_height] lists
