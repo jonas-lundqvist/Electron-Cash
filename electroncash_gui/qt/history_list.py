@@ -156,16 +156,17 @@ class HistoryList(MyTreeWidget, PrintError):
                     text = fx.historical_value_str(amount, date)
                     entry.append(text)
             item = SortableTreeWidgetItem(entry)
-            if dsp_status == DSPStatus.DETECTED:
-                for i in range(self.columnCount()): item.setBackground(i, QBrush(QColor("#FF0000")))
-                icon = self.get_icon_for_status(0)
-                item.setToolTip(0, _("Conflicting transaction detected"))
-            elif dsp_status == DSPStatus.UNDETECTED:
-                icon = self.get_icon_for_status(2)
-                item.setToolTip(0, _("Monitoring for conflicting transactions"))
-            elif dsp_status == DSPStatus.NOT_APPLICABLE and height < 1:
-                icon = self.get_icon_for_status(0)
-                item.setToolTip(0, _("Unable to monitor for conflicting transactions"))
+            if height < 1:
+                if dsp_status == DSPStatus.DETECTED:
+                    for i in range(self.columnCount()): item.setBackground(i, QBrush(QColor("#FF0000")))
+                    icon = self.get_icon_for_status(0)
+                    item.setToolTip(0, _("Conflicting transaction detected"))
+                elif dsp_status == DSPStatus.UNDETECTED:
+                    icon = self.get_icon_for_status(2)
+                    item.setToolTip(0, _("Monitoring for conflicting transactions"))
+                elif dsp_status == DSPStatus.NOT_APPLICABLE:
+                    icon = self.get_icon_for_status(0)
+                    item.setToolTip(0, _("Unable to monitor for conflicting transactions"))
             else:
                 item.setToolTip(0, str(conf) + " confirmation" + ("s" if conf != 1 else ""))
             if icon: item.setIcon(0, icon)

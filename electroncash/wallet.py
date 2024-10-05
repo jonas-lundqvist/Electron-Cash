@@ -3833,8 +3833,8 @@ class Abstract_Wallet(PrintError, SPVDelegate):
     def subscribe_to_dsp(self, history):
         for tx_hash, tx_height in history:
             if tx_height > 0:
+                self.remove_detected_dsproof(tx_hash)
                 if tx_hash in self.network.dsp_subscriptions:
-                    self.remove_detected_dsproof(tx_hash)
                     self.network.unsubscribe_to_dsproof(tx_hash, [])
             else:
                 if self.network.force_dsproof and tx_hash not in self.network.dsp_subscriptions:
