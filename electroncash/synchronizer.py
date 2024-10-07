@@ -122,6 +122,7 @@ class Synchronizer(ThreadJob):
         self._need_release = False
         self.cleaned_up = True
         self.network.unsubscribe_from_scripthashes(self.h2addr.keys(), self._on_address_status)
+        self.network.unsubscribe_to_dsproof_for_callback(self.dsproof_callback)
         self.network.cancel_requests(self._on_address_status)
         self.network.cancel_requests(self._on_address_history)
         self.network.cancel_requests(self._tx_response)
@@ -351,6 +352,11 @@ class Synchronizer(ThreadJob):
 
         if 'params' in response and len(response['params']) == 2:
             _, result = response['params']
+
+        if 'method' in response:
+            if response['method'] == 'blockchain.transaction.dsproof.unsubscribe':
+                self.print_error("unsubscribing to dsproof ", response['params'][0])
+                return
 
         if result is None:
             return

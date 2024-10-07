@@ -4800,7 +4800,8 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
             self.config.set_key('dsproof', force)
             if self.network:
                 self.network.toogle_dsproof_interface(force)
-                self.wallet.toggle_dsp_on_history()
+                for w in self.gui_object.windows:
+                    w.wallet.toggle_dsp_on_history(force)
 
         dsproof = self.config.get('dsproof', False)
         dsproof_cb = QCheckBox(_('Receive double spend notifications'))

@@ -3832,23 +3832,33 @@ class Abstract_Wallet(PrintError, SPVDelegate):
 
     def subscribe_to_dsp(self, history):
         for tx_hash, tx_height in history:
+            subscribed = False
+            if tx_hash in self.network.dsp_subscriptions:
+                if self.synchronizer.dsproof_callback in self.network.dsp_subscriptions[tx_hash]:
+                    subscribed = True
             if tx_height > 0:
                 self.remove_detected_dsproof(tx_hash)
-                if tx_hash in self.network.dsp_subscriptions:
-                    self.network.unsubscribe_to_dsproof(tx_hash, [])
+                if subscribed:
+                    self.network.unsubscribe_to_dsproof(tx_hash, self.synchronizer.dsproof_callback)
             else:
-                if self.network.force_dsproof and tx_hash not in self.network.dsp_subscriptions:
+                if self.network.force_dsproof and not subscribed:
                     self.set_dsp_status(tx_hash, DSPStatus.PROCESSING)
                     dsp_validation_thread = threading.Thread(target=self._process_dsp_viability, args=[tx_hash, self.synchronizer.dsproof_callback])
                     dsp_validation_thread.start()
 
-    def toggle_dsp_on_history(self):
-        h = self.get_history(domain=None, reverse=True, receives_before_sends=True, include_tokens=True, include_tokens_balances=False)
-        for h_item in h:
-            tx_hash, height, _, _, _, _, _, _ = h_item
-            if height < 1:
-                self.subscribe_to_dsp([(tx_hash, height)])
-        self.network.trigger_callback('wallet_updated', self)            
+    def toggle_dsp_on_history(self, enable: bool):
+        if enable:
+            h = self.get_history(domain=None, reverse=True, receives_before_sends=True, include_tokens=True, include_tokens_balances=False)
+            for h_item in h:
+                tx_hash, height, _, _, _, _, _, _ = h_item
+                if height < 1:
+                    self.subscribe_to_dsp([(tx_hash, height)])
+        else:
+            self.network.unsubscribe_to_dsproof_for_callback(self.synchronizer.dsproof_callback)
+            with self.lock:
+                self._dsp_statuses = {}
+        self.network.trigger_callback('wallet_updated', self)
+
 
 class Simple_Wallet(Abstract_Wallet):
     """ wallet with a single keystore """

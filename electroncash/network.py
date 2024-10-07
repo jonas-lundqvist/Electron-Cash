@@ -525,7 +525,8 @@ class Network(util.DaemonThread):
                 n_defunct += 1
         dsp_subs_copy = self.dsp_subscriptions.copy()
         for dsp_sub in dsp_subs_copy:
-            self.subscribe_to_dsproof(dsp_sub, dsp_subs_copy[dsp_sub])
+            for cb in dsp_subs_copy[dsp_sub]:
+                self.subscribe_to_dsproof(dsp_sub, cb)
 
         self.print_error('sent subscriptions to', self.interface.server, len(old_reqs),"reqs", len(self.subscribed_addresses), "subs", n_defunct, "defunct subs", len(dsp_subs_copy), "dsp subs")
 
@@ -954,18 +955,49 @@ class Network(util.DaemonThread):
         self.send(msgs, callback)
 
     def subscribe_to_dsproof(self, txid, callback):
-        if txid in self.dsp_subscriptions:
-            return
-        self.dsp_subscriptions[txid] = callback
+        with self.lock:
+            if txid in self.dsp_subscriptions:
+                if callback in self.dsp_subscriptions[txid]:
+                    return
+                self.dsp_subscriptions[txid].update({callback})
+            else:
+                self.dsp_subscriptions[txid] = {callback}
+
         msg = [[('blockchain.transaction.dsproof.subscribe'), [txid]]]
         self.send(msg, callback)
 
     def unsubscribe_to_dsproof(self, txid, callback):
-        if txid not in self.dsp_subscriptions:
-            return
-        del(self.dsp_subscriptions[txid])
+        with self.lock:
+            if txid not in self.dsp_subscriptions:
+                if callback not in self.dsp_subscriptions[txid]:
+                    return
+                else:
+                    self.dsp_subscriptions[txid].remove(callback)
+            if self.dsp_subscriptions[txid] == set():
+                del(self.dsp_subscriptions[txid])
         msg = [[('blockchain.transaction.dsproof.unsubscribe'), [txid]]]
         self.send(msg, callback)
+
+    def unsubscribe_to_dsproof_for_callback(self, callback):
+        to_delete_sub = []
+        to_remove_callback = []
+        to_send = []
+        with self.lock:
+            for txid in self.dsp_subscriptions:
+                if len(self.dsp_subscriptions[txid]) == 1 and callback in self.dsp_subscriptions[txid]:
+                    msg = [[('blockchain.transaction.dsproof.unsubscribe'), [txid]]]
+                    to_send.append((msg, callback))
+                    to_delete_sub.append(txid)
+                elif callback in self.dsp_subscriptions[txid]:
+                    to_remove_callback.append(txid)
+
+            for txid in to_delete_sub:
+                del(self.dsp_subscriptions[txid])
+            for txid in to_remove_callback:
+                self.dsp_subscriptions[txid].remove(callback)
+
+        for msg, callback in to_send:
+            self.send(msg, callback)
 
     def unsubscribe_from_scripthashes(self, scripthashes: Iterable[str], callback):
         method_sub = 'blockchain.scripthash.subscribe'
