@@ -954,6 +954,13 @@ class Network(util.DaemonThread):
                 for sh in scripthashes]
         self.send(msgs, callback)
 
+    def is_dsp_subscribed(self, txid, callback) -> bool:
+        with self.lock:
+            if txid in self.dsp_subscriptions:
+                if callback in self.dsp_subscriptions[txid]:
+                    return True
+            return False            
+
     def subscribe_to_dsproof(self, txid, callback):
         with self.lock:
             if txid in self.dsp_subscriptions:
@@ -980,7 +987,6 @@ class Network(util.DaemonThread):
 
     def unsubscribe_to_dsproof_for_callback(self, callback):
         to_delete_sub = []
-        to_remove_callback = []
         to_send = []
         with self.lock:
             for txid in self.dsp_subscriptions:
@@ -989,12 +995,10 @@ class Network(util.DaemonThread):
                     to_send.append((msg, callback))
                     to_delete_sub.append(txid)
                 elif callback in self.dsp_subscriptions[txid]:
-                    to_remove_callback.append(txid)
+                    self.dsp_subscriptions[txid].remove(callback)
 
             for txid in to_delete_sub:
                 del(self.dsp_subscriptions[txid])
-            for txid in to_remove_callback:
-                self.dsp_subscriptions[txid].remove(callback)
 
         for msg, callback in to_send:
             self.send(msg, callback)

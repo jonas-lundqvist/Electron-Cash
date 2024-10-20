@@ -3702,17 +3702,19 @@ class Abstract_Wallet(PrintError, SPVDelegate):
         self.storage.put('sign_schnorr', 2 if b else 0)
 
     def is_dsp_detected(self, txid) -> bool:
-        if txid not in self._dsp_statuses:
-            return False
-        return True if self._dsp_statuses[txid] == DSPStatus.DETECTED else False
+        with self.lock:
+            if txid not in self._dsp_statuses:
+                return False
+            return True if self._dsp_statuses[txid] == DSPStatus.DETECTED else False
 
     def get_dsp_status(self, txid) -> DSPStatus:
-        if not self.network.force_dsproof:
-            return DSPStatus.UNKNOWN
-        if txid in self._dsp_statuses:
-            return self._dsp_statuses[txid]
-        else:
-            return DSPStatus.NOT_APPLICABLE
+        with self.lock:
+            if not self.network.force_dsproof:
+                return DSPStatus.UNKNOWN
+            if txid in self._dsp_statuses:
+                return self._dsp_statuses[txid]
+            else:
+                return DSPStatus.NOT_APPLICABLE
 
     def set_dsp_status(self, txid, status: DSPStatus):
         with self.lock:
@@ -3832,10 +3834,7 @@ class Abstract_Wallet(PrintError, SPVDelegate):
 
     def subscribe_to_dsp(self, history):
         for tx_hash, tx_height in history:
-            subscribed = False
-            if tx_hash in self.network.dsp_subscriptions:
-                if self.synchronizer.dsproof_callback in self.network.dsp_subscriptions[tx_hash]:
-                    subscribed = True
+            subscribed = self.network.is_dsp_subscribed(tx_hash, self.synchronizer.dsproof_callback)
             if tx_height > 0:
                 self.remove_detected_dsproof(tx_hash)
                 if subscribed:
