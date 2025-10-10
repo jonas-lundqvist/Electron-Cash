@@ -52,7 +52,7 @@ tar xf "$CACHEDIR/Python-$PYTHON_VERSION.tar.xz" -C "$BUILDDIR"
     LC_ALL=C export BUILD_DATE=$(date -u -d "@$SOURCE_DATE_EPOCH" "+%b %d %Y")
     LC_ALL=C export BUILD_TIME=$(date -u -d "@$SOURCE_DATE_EPOCH" "+%H:%M:%S")
     # Patch taken from Ubuntu http://archive.ubuntu.com/ubuntu/pool/main/p/python3.11/python3.11_3.11.6-3.debian.tar.xz
-    patch -p1 < "$CONTRIB/build-linux/appimage/patches/python-3.11.6-reproducible-buildinfo.diff" || fail "Could not patch Python build system for reproducibility"
+    patch -p1 < "$CONTRIB/build-linux/appimage/patches/python-3.14.0-reproducible-buildinfo.patch" || fail "Could not patch Python build system for reproducibility"
     ./configure \
       --cache-file="$CACHEDIR/python.config.cache" \
       --prefix="$APPDIR/usr" \
@@ -73,7 +73,7 @@ appdir_python() {
   env \
     PYTHONNOUSERSITE=1 \
     LD_LIBRARY_PATH="$APPDIR/usr/lib:$APPDIR/usr/lib/x86_64-linux-gnu${LD_LIBRARY_PATH+:$LD_LIBRARY_PATH}" \
-    "$APPDIR/usr/bin/python3.11" "$@"
+    "$APPDIR/usr/bin/python3.14" "$@"
 }
 
 python='appdir_python'
@@ -149,7 +149,7 @@ info "Finalizing AppDir"
     move_lib
 
     # apply global appimage blacklist to exclude stuff
-    # move usr/include out of the way to preserve usr/include/python3.11m.
+    # move usr/include out of the way to preserve usr/include/python3.14m.
     mv usr/include usr/include.tmp
     delete_blacklisted
     mv usr/include.tmp usr/include
@@ -180,7 +180,7 @@ strip_binaries()
 {
   chmod u+w -R "$APPDIR"
   {
-    printf '%s\0' "$APPDIR/usr/bin/python3.11"
+    printf '%s\0' "$APPDIR/usr/bin/python3.14"
     find "$APPDIR" -type f -regex '.*\.so\(\.[0-9.]+\)?$' -print0
   } | xargs -0 --no-run-if-empty --verbose strip -R .note.gnu.build-id -R .comment
 }
